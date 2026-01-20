@@ -1,0 +1,84 @@
+<UserControl x:Class="MacroStudio.Presentation.Views.SettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d"
+             d:DesignHeight="600" d:DesignWidth="1200">
+
+    <Grid Margin="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0"
+                   FontSize="18"
+                   FontWeight="SemiBold"
+                   Text="設定"
+                   Margin="0,0,0,12"/>
+
+        <Border Grid.Row="1" Style="{DynamicResource CardBorder}" Padding="14">
+            <DockPanel LastChildFill="True">
+                <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+                    <TextBlock FontWeight="SemiBold" Text="錄製快捷鍵" Margin="0,0,0,8"/>
+                    <TextBlock Foreground="{DynamicResource TextMutedBrush}" Text="以下為全域快捷鍵，切到其他視窗也能控制錄製。" TextWrapping="Wrap"/>
+                </StackPanel>
+
+                <Grid Margin="0,10,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="120"/>
+                        <ColumnDefinition Width="260"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Start -->
+                    <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Text="開始錄製"/>
+                    <TextBlock Grid.Row="0" Grid.Column="1" VerticalAlignment="Center"
+                               Foreground="{DynamicResource TextMutedBrush}"
+                               Text="{Binding RecordingStartHotkeyDisplay}"/>
+                    <Button Grid.Row="0" Grid.Column="2" Margin="10,0,0,0" Width="90"
+                            Content="變更"
+                            Style="{DynamicResource PrimaryButton}"
+                            Command="{Binding ChangeRecordingStartHotkeyCommand}"/>
+
+                    <!-- Pause -->
+                    <TextBlock Grid.Row="1" Grid.Column="0" Margin="0,10,0,0" VerticalAlignment="Center" Text="暫停錄製"/>
+                    <TextBlock Grid.Row="1" Grid.Column="1" Margin="0,10,0,0" VerticalAlignment="Center"
+                               Foreground="{DynamicResource TextMutedBrush}"
+                               Text="{Binding RecordingPauseHotkeyDisplay}"/>
+                    <Button Grid.Row="1" Grid.Column="2" Margin="10,10,0,0" Width="90"
+                            Content="變更"
+                            Command="{Binding ChangeRecordingPauseHotkeyCommand}"/>
+
+                    <!-- Stop -->
+                    <TextBlock Grid.Row="2" Grid.Column="0" Margin="0,10,0,0" VerticalAlignment="Center" Text="停止錄製"/>
+                    <TextBlock Grid.Row="2" Grid.Column="1" Margin="0,10,0,0" VerticalAlignment="Center"
+                               Foreground="{DynamicResource TextMutedBrush}"
+                               Text="{Binding RecordingStopHotkeyDisplay}"/>
+                    <Button Grid.Row="2" Grid.Column="2" Margin="10,10,0,0" Width="90"
+                            Content="變更"
+                            Command="{Binding ChangeRecordingStopHotkeyCommand}"/>
+
+                    <!-- Reset -->
+                    <StackPanel Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="3" Orientation="Horizontal" Margin="0,16,0,0">
+                        <Button Content="重設為預設"
+                                Width="120"
+                                Command="{Binding ResetRecordingHotkeysToDefaultCommand}"/>
+                        <TextBlock Margin="12,6,0,0"
+                                   Foreground="{DynamicResource TextMutedBrush}"
+                                   Text="{Binding LastMessage}"
+                                   TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Grid>
+            </DockPanel>
+        </Border>
+    </Grid>
+</UserControl>
+

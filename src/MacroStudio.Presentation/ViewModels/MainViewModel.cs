@@ -18,11 +18,14 @@ public partial class MainViewModel : ObservableObject
     private readonly ILoggingService _loggingService;
     private readonly ISafetyService _safetyService;
     private readonly IGlobalHotkeyService _hotkeyService;
+    private readonly IRecordingHotkeyHookService _recordingHotkeyHookService;
 
     public ScriptListViewModel ScriptList { get; }
     public CommandGridViewModel CommandGrid { get; }
     public ExecutionControlViewModel ExecutionControls { get; }
+    public RecordingViewModel Recording { get; }
     public LoggingViewModel Logging { get; }
+    public SettingsViewModel Settings { get; }
 
     [ObservableProperty]
     private Script? selectedScript;
@@ -42,10 +45,13 @@ public partial class MainViewModel : ObservableObject
         ILoggingService loggingService,
         ISafetyService safetyService,
         IGlobalHotkeyService hotkeyService,
+        IRecordingHotkeyHookService recordingHotkeyHookService,
         ScriptListViewModel scriptListViewModel,
         CommandGridViewModel commandGridViewModel,
         ExecutionControlViewModel executionControlViewModel,
-        LoggingViewModel loggingViewModel)
+        RecordingViewModel recordingViewModel,
+        LoggingViewModel loggingViewModel,
+        SettingsViewModel settingsViewModel)
     {
         _scriptManager = scriptManager ?? throw new ArgumentNullException(nameof(scriptManager));
         _recordingService = recordingService ?? throw new ArgumentNullException(nameof(recordingService));
@@ -53,11 +59,14 @@ public partial class MainViewModel : ObservableObject
         _loggingService = loggingService ?? throw new ArgumentNullException(nameof(loggingService));
         _safetyService = safetyService ?? throw new ArgumentNullException(nameof(safetyService));
         _hotkeyService = hotkeyService ?? throw new ArgumentNullException(nameof(hotkeyService));
+        _recordingHotkeyHookService = recordingHotkeyHookService ?? throw new ArgumentNullException(nameof(recordingHotkeyHookService));
 
         ScriptList = scriptListViewModel ?? throw new ArgumentNullException(nameof(scriptListViewModel));
         CommandGrid = commandGridViewModel ?? throw new ArgumentNullException(nameof(commandGridViewModel));
         ExecutionControls = executionControlViewModel ?? throw new ArgumentNullException(nameof(executionControlViewModel));
+        Recording = recordingViewModel ?? throw new ArgumentNullException(nameof(recordingViewModel));
         Logging = loggingViewModel ?? throw new ArgumentNullException(nameof(loggingViewModel));
+        Settings = settingsViewModel ?? throw new ArgumentNullException(nameof(settingsViewModel));
 
         ScriptList.SelectedScriptChanged += (_, script) =>
         {
@@ -75,6 +84,8 @@ public partial class MainViewModel : ObservableObject
 
         // Listen for hotkey presses to trigger scripts
         _hotkeyService.HotkeyPressed += OnHotkeyPressed;
+        // Listen for recording control hotkeys from low-level hook (no RegisterHotKey).
+        _recordingHotkeyHookService.HotkeyPressed += OnRecordingHotkeyPressed;
 
         // Auto-initialize scripts on first load so existing scripts are scanned.
         _ = InitializeAsync();
@@ -225,6 +236,72 @@ public partial class MainViewModel : ObservableObject
                 });
             }
         });
+    }
+
+    private void OnRecordingHotkeyPressed(object? sender, HotkeyPressedEventArgs e)
+    {
+        // Don't trigger while capturing hotkeys in UI.
+        if (_isHotkeyCaptureActive)
+            return;
+
+        try
+        {
+            var start = Settings.RecordingStartHotkey;
+            var pause = Settings.RecordingPauseHotkey;
+            var stop = Settings.RecordingStopHotkey;
+
+            bool Match(HotkeyDefinition? hk) =>
+                hk != null &&
+                hk.Modifiers == e.Hotkey.Modifiers &&
+                hk.Key == e.Hotkey.Key;
+
+            if (Match(start))
+            {
+                System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                {
+                    if (Recording.StartRecordingCommand.CanExecute(null))
+                        Recording.StartRecordingCommand.Execute(null);
+                });
+                return;
+            }
+
+            if (Match(pause))
+            {
+                System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                {
+                    if (Recording.PauseRecordingCommand.CanExecute(null))
+                        Recording.PauseRecordingCommand.Execute(null);
+                });
+                return;
+            }
+
+            if (Match(stop))
+            {
+                System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                {
+                    if (Recording.StopRecordingCommand.CanExecute(null))
+                        Recording.StopRecordingCommand.Execute(null);
+                    else
+                        _ = Task.Run(async () =>
+                        {
+                            try
+                            {
+                                var state = _recordingService.CurrentSession?.State.ToString() ?? "null";
+                                await _loggingService.LogInfoAsync("Recording stop hotkey pressed but Stop command not executable", new Dictionary<string, object>
+                                {
+                                    { "Hotkey", e.Hotkey.GetDisplayString() },
+                                    { "RecordingState", state }
+                                });
+                            }
+                            catch { }
+                        });
+                });
+                return;
+            }
+        }
+        catch
+        {
+        }
     }
 
     /// <summary>

@@ -8,9 +8,14 @@
         xmlns:views="clr-namespace:MacroStudio.Presentation.Views"
         xmlns:conv="clr-namespace:MacroStudio.Presentation.Converters"
         mc:Ignorable="d"
-        Title="Macro Studio" Height="900" Width="1600"
+        Title="Macro Studio" Height="1200" Width="1600"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource Bg0}">
+    <Window.Resources>
+        <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
+            <views:SettingsView/>
+        </DataTemplate>
+    </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -38,62 +43,81 @@
             </DockPanel>
         </Border>
 
-        <!-- Main content: scripts + commands + execution controls -->
-        <Grid Grid.Row="1" Margin="14">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="320"/>
-                <ColumnDefinition Width="12"/>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="12"/>
-                <ColumnDefinition Width="320"/>
-            </Grid.ColumnDefinitions>
+        <!-- Main tabs -->
+        <TabControl Grid.Row="1" Margin="14" Background="{DynamicResource Bg0}" BorderBrush="{DynamicResource BorderBrushSoft}">
+            <TabItem Header="工作區">
+                <!-- Main content: scripts + commands + execution controls -->
+                <Grid Margin="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="320"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="320"/>
+                    </Grid.ColumnDefinitions>
 
-            <views:ScriptListView Grid.Column="0"/>
+                    <views:ScriptListView Grid.Column="0"/>
 
-            <views:CommandGridView Grid.Column="2"/>
+                    <views:CommandGridView Grid.Column="2"/>
 
-            <!-- Execution controls -->
-            <Border Grid.Column="4" Style="{DynamicResource CardBorder}" Padding="14">
-                <DockPanel LastChildFill="True">
-                    <StackPanel DockPanel.Dock="Top" Orientation="Vertical">
-                        <TextBlock FontWeight="SemiBold" Text="Execution" Margin="0,0,0,8"/>
+                    <!-- Recording + Execution -->
+                    <Grid Grid.Column="4">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
 
-                        <TextBlock Foreground="{DynamicResource TextMutedBrush}" Text="{Binding ExecutionControls.State}" Margin="0,0,0,8"/>
+                        <views:RecordingView Grid.Row="0" Margin="0,0,0,12"/>
 
-                        <ProgressBar Height="14"
-                                     Minimum="0" Maximum="100"
-                                     Value="{Binding ExecutionControls.CompletionPercentage}" />
-                        <TextBlock Margin="0,6,0,8"
-                                   Foreground="{DynamicResource TextMutedBrush}"
-                                   Text="{Binding ExecutionControls.CurrentCommandIndex}"/>
+                        <!-- Execution controls -->
+                        <Border Grid.Row="1" Style="{DynamicResource CardBorder}" Padding="14">
+                            <DockPanel LastChildFill="True">
+                                <StackPanel DockPanel.Dock="Top" Orientation="Vertical">
+                                    <TextBlock FontWeight="SemiBold" Text="Execution" Margin="0,0,0,8"/>
 
-                        <WrapPanel Margin="0,6,0,8">
-                            <Button Content="Start" Width="72" Margin="0,0,8,8" Style="{DynamicResource PrimaryButton}" Command="{Binding ExecutionControls.StartCommand}"/>
-                            <Button Content="Pause" Width="72" Margin="0,0,8,8" Command="{Binding ExecutionControls.PauseCommand}"/>
-                            <Button Content="Resume" Width="72" Margin="0,0,8,8" Command="{Binding ExecutionControls.ResumeCommand}"/>
-                            <Button Content="Stop" Width="72" Margin="0,0,8,8" Command="{Binding ExecutionControls.StopCommand}"/>
-                            <Button Content="Step" Width="72" Margin="0,0,8,8" Command="{Binding ExecutionControls.StepCommand}"/>
-                            <Button Content="Terminate" Width="88" Margin="0,0,8,8" Style="{DynamicResource DangerButton}" Command="{Binding ExecutionControls.TerminateCommand}"/>
-                        </WrapPanel>
+                                    <TextBlock Foreground="{DynamicResource TextMutedBrush}" Text="{Binding ExecutionControls.State}" Margin="0,0,0,8"/>
 
-                        <GroupBox Header="Options" Padding="10" BorderBrush="{DynamicResource BorderBrushSoft}" Foreground="{DynamicResource TextMutedBrush}">
-                            <StackPanel>
-                                <DockPanel Margin="0,0,0,6">
-                                    <TextBlock Width="120" Text="Speed" VerticalAlignment="Center"/>
-                                    <TextBox Text="{Binding ExecutionControls.SpeedMultiplier, UpdateSourceTrigger=PropertyChanged}" />
-                                </DockPanel>
-                                <CheckBox Content="Show countdown" IsChecked="{Binding ExecutionControls.ShowCountdown}" />
-                                <DockPanel Margin="0,6,0,0">
-                                    <TextBlock Width="120" Text="Countdown (s)" VerticalAlignment="Center"/>
-                                    <TextBox Text="{Binding ExecutionControls.CountdownSeconds, UpdateSourceTrigger=PropertyChanged}" />
-                                </DockPanel>
-                                <TextBlock Foreground="{DynamicResource DangerBrush}" Margin="0,10,0,0" Text="{Binding ExecutionControls.LastError}" TextWrapping="Wrap"/>
-                            </StackPanel>
-                        </GroupBox>
-                    </StackPanel>
-                </DockPanel>
-            </Border>
-        </Grid>
+                                    <ProgressBar Height="14"
+                                                 Minimum="0" Maximum="100"
+                                                 Value="{Binding ExecutionControls.CompletionPercentage}" />
+                                    <TextBlock Margin="0,6,0,8"
+                                               Foreground="{DynamicResource TextMutedBrush}"
+                                               Text="{Binding ExecutionControls.CurrentCommandIndex}"/>
+
+                                    <WrapPanel Margin="0,6,0,8">
+                                        <Button Content="Start" Width="72" Margin="0,0,8,8" Style="{DynamicResource PrimaryButton}" Command="{Binding ExecutionControls.StartCommand}"/>
+                                        <Button Content="Pause" Width="72" Margin="0,0,8,8" Command="{Binding ExecutionControls.PauseCommand}"/>
+                                        <Button Content="Resume" Width="72" Margin="0,0,8,8" Command="{Binding ExecutionControls.ResumeCommand}"/>
+                                        <Button Content="Stop" Width="72" Margin="0,0,8,8" Command="{Binding ExecutionControls.StopCommand}"/>
+                                        <Button Content="Step" Width="72" Margin="0,0,8,8" Command="{Binding ExecutionControls.StepCommand}"/>
+                                        <Button Content="Terminate" Width="88" Margin="0,0,8,8" Style="{DynamicResource DangerButton}" Command="{Binding ExecutionControls.TerminateCommand}"/>
+                                    </WrapPanel>
+
+                                    <GroupBox Header="Options" Padding="10" BorderBrush="{DynamicResource BorderBrushSoft}" Foreground="{DynamicResource TextMutedBrush}">
+                                        <StackPanel>
+                                            <DockPanel Margin="0,0,0,6">
+                                                <TextBlock Width="120" Text="Speed" VerticalAlignment="Center"/>
+                                                <TextBox Text="{Binding ExecutionControls.SpeedMultiplier, UpdateSourceTrigger=PropertyChanged}" />
+                                            </DockPanel>
+                                            <CheckBox Content="Show countdown" IsChecked="{Binding ExecutionControls.ShowCountdown}" />
+                                            <DockPanel Margin="0,6,0,0">
+                                                <TextBlock Width="120" Text="Countdown (s)" VerticalAlignment="Center"/>
+                                                <TextBox Text="{Binding ExecutionControls.CountdownSeconds, UpdateSourceTrigger=PropertyChanged}" />
+                                            </DockPanel>
+                                            <TextBlock Foreground="{DynamicResource DangerBrush}" Margin="0,10,0,0" Text="{Binding ExecutionControls.LastError}" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </GroupBox>
+                                </StackPanel>
+                            </DockPanel>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="設定">
+                <ContentPresenter Content="{Binding Settings}"/>
+            </TabItem>
+        </TabControl>
 
         <!-- Logging panel -->
         <Border Grid.Row="2" Margin="14" Style="{DynamicResource CardBorder}" Padding="14">

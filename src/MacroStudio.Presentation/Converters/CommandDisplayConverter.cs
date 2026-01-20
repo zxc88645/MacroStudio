@@ -15,6 +15,7 @@ public sealed class CommandDisplayConverter : IValueConverter
         {
             MouseMoveCommand mm => $"Move to ({mm.Position.X}, {mm.Position.Y})",
             MouseClickCommand mc => $"{mc.Type} {mc.Button}",
+            KeyPressCommand kp => $"{(kp.IsDown ? "KeyDown" : "KeyUp")} {kp.Key}",
             KeyboardCommand kc when !string.IsNullOrEmpty(kc.Text) => $"Type \"{kc.Text}\"",
             KeyboardCommand kc => $"Keys: {string.Join("+", kc.Keys)}",
             SleepCommand sc => $"Sleep {sc.Duration.TotalMilliseconds:0} ms",

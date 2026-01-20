@@ -1,0 +1,77 @@
+<UserControl x:Class="MacroStudio.Presentation.Views.RecordingView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:conv="clr-namespace:MacroStudio.Presentation.Converters"
+             mc:Ignorable="d"
+             d:DesignHeight="450" d:DesignWidth="320">
+    <UserControl.Resources>
+        <conv:CommandDisplayConverter x:Key="CommandDisplayConverter" />
+    </UserControl.Resources>
+    <!-- Keep this panel from growing unbounded (it lives in an Auto row in MainWindow). -->
+    <Border Style="{DynamicResource CardBorder}" Padding="14" MaxHeight="340">
+        <DockPanel LastChildFill="True">
+            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                <TextBlock FontWeight="SemiBold" Text="Recording" />
+                <TextBlock DockPanel.Dock="Right"
+                           Foreground="{DynamicResource TextMutedBrush}"
+                           Text="{Binding Recording.RecordingStatusText}" />
+            </DockPanel>
+
+            <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+                <WrapPanel Margin="0,0,0,8">
+                    <Button Content="Start" Width="72" Margin="0,0,8,8"
+                            Style="{DynamicResource PrimaryButton}"
+                            Command="{Binding Recording.StartRecordingCommand}" />
+                    <Button Content="{Binding Recording.PauseButtonText}" Width="72" Margin="0,0,8,8"
+                            Command="{Binding Recording.PauseRecordingCommand}" />
+                    <Button Content="Stop" Width="72" Margin="0,0,8,8"
+                            Command="{Binding Recording.StopRecordingCommand}" />
+                </WrapPanel>
+
+                <GroupBox Header="Options" Padding="10" BorderBrush="{DynamicResource BorderBrushSoft}" Foreground="{DynamicResource TextMutedBrush}">
+                    <StackPanel>
+                        <CheckBox Content="Record mouse movements" IsChecked="{Binding Recording.RecordMouseMovements}" />
+                        <CheckBox Content="Record mouse clicks" IsChecked="{Binding Recording.RecordMouseClicks}" />
+                        <CheckBox Content="Record keyboard input" IsChecked="{Binding Recording.RecordKeyboardInput}" />
+                        <CheckBox Content="Filter injected/system events" IsChecked="{Binding Recording.FilterSystemEvents}" />
+                    </StackPanel>
+                </GroupBox>
+
+                <DockPanel Margin="0,10,0,0">
+                    <TextBlock Foreground="{DynamicResource TextMutedBrush}"
+                               VerticalAlignment="Center"
+                               Text="{Binding Recording.TotalCommands, StringFormat=Recorded: {0}}" />
+                    <Button DockPanel.Dock="Right"
+                            Content="Save as Script"
+                            Style="{DynamicResource PrimaryButton}"
+                            Command="{Binding Recording.SaveAsScriptCommand}" />
+                </DockPanel>
+            </StackPanel>
+
+            <ListBox ItemsSource="{Binding Recording.RecordedCommands}"
+                     BorderThickness="0"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     ScrollViewer.CanContentScroll="True"
+                     VirtualizingPanel.IsVirtualizing="True"
+                     VirtualizingPanel.VirtualizationMode="Recycling">
+                <ListBox.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <VirtualizingStackPanel />
+                    </ItemsPanelTemplate>
+                </ListBox.ItemsPanel>
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding ., Converter={StaticResource CommandDisplayConverter}}"
+                                   Foreground="{DynamicResource TextBrush}"
+                                   TextWrapping="Wrap"
+                                   Margin="0,2"/>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </DockPanel>
+    </Border>
+</UserControl>
+

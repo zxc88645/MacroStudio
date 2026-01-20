@@ -3,6 +3,7 @@ using MacroStudio.Domain.Interfaces;
 using MacroStudio.Infrastructure.Adapters;
 using MacroStudio.Infrastructure.Storage;
 using MacroStudio.Infrastructure.Utilities;
+using MacroStudio.Infrastructure.Win32;
 using Microsoft.Extensions.DependencyInjection;
 using MacroStudio.Presentation.ViewModels;
 using MacroStudio.Presentation.Services;
@@ -43,7 +44,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ScriptListViewModel>();
         services.AddSingleton<CommandGridViewModel>();
         services.AddSingleton<ExecutionControlViewModel>();
+        services.AddSingleton<RecordingViewModel>();
         services.AddSingleton<LoggingViewModel>();
+        services.AddSingleton<SettingsViewModel>();
 
         // UI coordinators
         services.AddHostedService<SafetyUiCoordinator>();
@@ -75,9 +78,13 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IInputSimulator, Win32InputSimulator>();
         services.AddScoped<CoordinateTransformer>();
         services.AddScoped<TimingUtilities>();
+
+        // Register input hook service for recording
+        services.AddSingleton<IInputHookService, Win32InputHookService>();
         
         // Register global hotkey service
         services.AddSingleton<IGlobalHotkeyService, Win32GlobalHotkeyService>();
+        services.AddSingleton<IRecordingHotkeyHookService, Win32RecordingHotkeyHookService>();
         
         // Register storage services
         services.AddScoped<IFileStorageService, JsonFileStorageService>();
