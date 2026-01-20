@@ -1,0 +1,2 @@
+# Domain Events
+This folder contains domain events for communication between bounded contexts.

@@ -1,0 +1,2 @@
+# Domain Interfaces (Ports)
+This folder contains interfaces that define contracts for external dependencies.

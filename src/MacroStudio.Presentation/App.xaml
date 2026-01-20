@@ -1,0 +1,166 @@
+﻿<Application x:Class="MacroStudio.Presentation.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:MacroStudio.Presentation"
+             xmlns:conv="clr-namespace:MacroStudio.Presentation.Converters"
+             xmlns:avalon="http://icsharpcode.net/sharpdevelop/avalonedit">
+    <Application.Resources>
+        <!-- Theme -->
+        <Color x:Key="C_Bg0">#0b1220</Color>
+        <Color x:Key="C_Bg1">#111827</Color>
+        <Color x:Key="C_Surface">#0f172a</Color>
+        <Color x:Key="C_Border">#263244</Color>
+        <Color x:Key="C_Text">#e5e7eb</Color>
+        <Color x:Key="C_TextMuted">#9ca3af</Color>
+        <Color x:Key="C_Accent">#3b82f6</Color>
+        <Color x:Key="C_Accent2">#22c55e</Color>
+        <Color x:Key="C_Danger">#ef4444</Color>
+        <Color x:Key="C_Warn">#f59e0b</Color>
+
+        <SolidColorBrush x:Key="Bg0" Color="{StaticResource C_Bg0}"/>
+        <SolidColorBrush x:Key="Bg1" Color="{StaticResource C_Bg1}"/>
+        <SolidColorBrush x:Key="Surface" Color="{StaticResource C_Surface}"/>
+        <SolidColorBrush x:Key="BorderBrushSoft" Color="{StaticResource C_Border}"/>
+        <SolidColorBrush x:Key="TextBrush" Color="{StaticResource C_Text}"/>
+        <SolidColorBrush x:Key="TextMutedBrush" Color="{StaticResource C_TextMuted}"/>
+        <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource C_Accent}"/>
+        <SolidColorBrush x:Key="Accent2Brush" Color="{StaticResource C_Accent2}"/>
+        <SolidColorBrush x:Key="DangerBrush" Color="{StaticResource C_Danger}"/>
+        <SolidColorBrush x:Key="WarnBrush" Color="{StaticResource C_Warn}"/>
+
+        <!-- Converters -->
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+        <conv:CommandDisplayConverter x:Key="CommandDisplayConverter" />
+        <conv:LogEntryDisplayConverter x:Key="LogEntryDisplayConverter" />
+        <conv:LogLevelBrushConverter x:Key="LogLevelBrushConverter" />
+
+        <!-- Global typography -->
+        <Style TargetType="{x:Type TextBlock}">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="FontSize" Value="13" />
+        </Style>
+
+        <!-- Buttons -->
+        <Style TargetType="{x:Type Button}">
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="Background" Value="{StaticResource Surface}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushSoft}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#16213b"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#0b1530"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PrimaryButton" TargetType="{x:Type Button}" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#2563eb"/>
+                    <Setter Property="BorderBrush" Value="#2563eb"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#1d4ed8"/>
+                    <Setter Property="BorderBrush" Value="#1d4ed8"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="DangerButton" TargetType="{x:Type Button}" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="{StaticResource DangerBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource DangerBrush}"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+
+        <!-- Inputs -->
+        <Style TargetType="{x:Type TextBox}">
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="Background" Value="{StaticResource Bg1}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushSoft}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type TextBox}">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8">
+                            <ScrollViewer x:Name="PART_ContentHost"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Surfaces -->
+        <Style x:Key="CardBorder" TargetType="{x:Type Border}">
+            <Setter Property="Background" Value="{StaticResource Surface}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushSoft}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="12"/>
+        </Style>
+
+        <!-- DataGrid -->
+        <Style TargetType="{x:Type DataGrid}">
+            <Setter Property="Background" Value="{StaticResource Surface}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushSoft}"/>
+            <Setter Property="GridLinesVisibility" Value="None"/>
+            <Setter Property="HeadersVisibility" Value="Column"/>
+            <Setter Property="RowBackground" Value="#0f1b35"/>
+            <Setter Property="AlternatingRowBackground" Value="#0d1730"/>
+            <Setter Property="ColumnHeaderStyle">
+                <Setter.Value>
+                    <Style TargetType="{x:Type DataGridColumnHeader}">
+                        <Setter Property="Background" Value="#0b1530"/>
+                        <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
+                        <Setter Property="Padding" Value="10,8"/>
+                        <Setter Property="BorderBrush" Value="{StaticResource BorderBrushSoft}"/>
+                        <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                    </Style>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="{x:Type ListBox}">
+            <Setter Property="Background" Value="{StaticResource Surface}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushSoft}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+
+        <!-- AvalonEdit TextEditor styling -->
+        <Style TargetType="avalon:TextEditor" xmlns:avalon="http://icsharpcode.net/sharpdevelop/avalonedit">
+            <Setter Property="Background" Value="{StaticResource Bg1}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushSoft}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8"/>
+        </Style>
+
+    </Application.Resources>
+</Application>

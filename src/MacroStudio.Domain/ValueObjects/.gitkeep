@@ -1,0 +1,2 @@
+# Domain Value Objects
+This folder contains value objects like Point, MouseButton, VirtualKey, ExecutionState.
