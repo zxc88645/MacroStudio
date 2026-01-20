@@ -1,5 +1,6 @@
 using MacroStudio.Domain.Entities;
 using MacroStudio.Domain.Interfaces;
+using MacroStudio.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
 
 namespace MacroStudio.Application.Services;
@@ -11,18 +12,22 @@ namespace MacroStudio.Application.Services;
 public class ScriptManager : IScriptManager
 {
     private readonly IFileStorageService _storageService;
+    private readonly IGlobalHotkeyService _hotkeyService;
     private readonly ILogger<ScriptManager> _logger;
     private readonly Dictionary<Guid, Script> _scriptCache;
+    private readonly Dictionary<Guid, HotkeyDefinition> _registeredHotkeys = new();
     private readonly object _cacheLock = new();
 
     /// <summary>
     /// Initializes a new instance of the ScriptManager class.
     /// </summary>
     /// <param name="storageService">File storage service for persistence.</param>
+    /// <param name="hotkeyService">Global hotkey service for script trigger hotkeys.</param>
     /// <param name="logger">Logger for diagnostic information.</param>
-    public ScriptManager(IFileStorageService storageService, ILogger<ScriptManager> logger)
+    public ScriptManager(IFileStorageService storageService, IGlobalHotkeyService hotkeyService, ILogger<ScriptManager> logger)
     {
         _storageService = storageService ?? throw new ArgumentNullException(nameof(storageService));
+        _hotkeyService = hotkeyService ?? throw new ArgumentNullException(nameof(hotkeyService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _scriptCache = new Dictionary<Guid, Script>();
         
@@ -162,6 +167,32 @@ public class ScriptManager : IScriptManager
                 throw new InvalidOperationException($"Script validation failed: {errors}");
             }
 
+            // Unregister old hotkey if it changed
+            lock (_cacheLock)
+            {
+                if (_registeredHotkeys.TryGetValue(script.Id, out var oldHotkey))
+                {
+                    // Compare by Modifiers and Key, not by object reference or Id
+                    bool hotkeyChanged = script.TriggerHotkey == null ||
+                                        oldHotkey.Modifiers != script.TriggerHotkey.Modifiers ||
+                                        oldHotkey.Key != script.TriggerHotkey.Key;
+                    
+                    if (hotkeyChanged)
+                    {
+                        try
+                        {
+                            _hotkeyService.UnregisterHotkeyAsync(oldHotkey).GetAwaiter().GetResult();
+                            _registeredHotkeys.Remove(script.Id);
+                            _logger.LogInformation("Unregistered old hotkey for script {ScriptId}: {Hotkey}", script.Id, oldHotkey);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to unregister old hotkey for script {ScriptId}", script.Id);
+                        }
+                    }
+                }
+            }
+
             // Save to storage immediately
             await _storageService.SaveScriptAsync(script);
 
@@ -171,12 +202,64 @@ public class ScriptManager : IScriptManager
                 _scriptCache[script.Id] = script;
             }
 
+            // Register new hotkey if specified
+            if (script.TriggerHotkey != null)
+            {
+                try
+                {
+                    await _hotkeyService.RegisterHotkeyAsync(script.TriggerHotkey);
+                    lock (_cacheLock)
+                    {
+                        _registeredHotkeys[script.Id] = script.TriggerHotkey;
+                    }
+                    _logger.LogInformation("Registered trigger hotkey for script {ScriptId}: {Hotkey}", script.Id, script.TriggerHotkey);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to register trigger hotkey for script {ScriptId}", script.Id);
+                }
+            }
+
             _logger.LogInformation("Updated script {ScriptId}", script.Id);
         }
         catch (Exception ex) when (!(ex is ArgumentNullException || ex is InvalidOperationException))
         {
             _logger.LogError(ex, "Error updating script {ScriptId}", script.Id);
             throw;
+        }
+    }
+
+    /// <summary>
+    /// Registers hotkeys for all scripts that have trigger hotkeys defined.
+    /// </summary>
+    public async Task RegisterAllScriptHotkeysAsync()
+    {
+        try
+        {
+            var scripts = await GetAllScriptsAsync();
+            foreach (var script in scripts)
+            {
+                if (script.TriggerHotkey != null)
+                {
+                    try
+                    {
+                        await _hotkeyService.RegisterHotkeyAsync(script.TriggerHotkey);
+                        lock (_cacheLock)
+                        {
+                            _registeredHotkeys[script.Id] = script.TriggerHotkey;
+                        }
+                        _logger.LogDebug("Registered trigger hotkey for script {ScriptId}: {Hotkey}", script.Id, script.TriggerHotkey);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to register trigger hotkey for script {ScriptId}", script.Id);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error registering script hotkeys");
         }
     }
 
