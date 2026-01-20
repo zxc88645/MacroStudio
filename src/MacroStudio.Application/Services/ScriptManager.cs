@@ -168,29 +168,41 @@ public class ScriptManager : IScriptManager
             }
 
             // Unregister old hotkey if it changed
+            // First, check if hotkey changed and get the old hotkey (inside lock)
+            HotkeyDefinition? oldHotkeyToUnregister = null;
+            bool hotkeyChanged = false;
             lock (_cacheLock)
             {
                 if (_registeredHotkeys.TryGetValue(script.Id, out var oldHotkey))
                 {
                     // Compare by Modifiers, Key, and TriggerMode
-                    bool hotkeyChanged = script.TriggerHotkey == null ||
-                                        oldHotkey.Modifiers != script.TriggerHotkey.Modifiers ||
-                                        oldHotkey.Key != script.TriggerHotkey.Key ||
-                                        oldHotkey.TriggerMode != script.TriggerHotkey.TriggerMode;
+                    hotkeyChanged = script.TriggerHotkey == null ||
+                                    oldHotkey.Modifiers != script.TriggerHotkey.Modifiers ||
+                                    oldHotkey.Key != script.TriggerHotkey.Key ||
+                                    oldHotkey.TriggerMode != script.TriggerHotkey.TriggerMode;
                     
                     if (hotkeyChanged)
                     {
-                        try
-                        {
-                            _hotkeyService.UnregisterHotkeyAsync(oldHotkey).GetAwaiter().GetResult();
-                            _registeredHotkeys.Remove(script.Id);
-                            _logger.LogInformation("Unregistered old hotkey for script {ScriptId}: {Hotkey}", script.Id, oldHotkey);
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogWarning(ex, "Failed to unregister old hotkey for script {ScriptId}", script.Id);
-                        }
+                        oldHotkeyToUnregister = oldHotkey;
                     }
+                }
+            }
+
+            // Unregister old hotkey outside the lock to avoid deadlock
+            if (hotkeyChanged && oldHotkeyToUnregister != null)
+            {
+                try
+                {
+                    await _hotkeyService.UnregisterHotkeyAsync(oldHotkeyToUnregister);
+                    lock (_cacheLock)
+                    {
+                        _registeredHotkeys.Remove(script.Id);
+                    }
+                    _logger.LogInformation("Unregistered old hotkey for script {ScriptId}: {Hotkey}", script.Id, oldHotkeyToUnregister);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to unregister old hotkey for script {ScriptId}", script.Id);
                 }
             }
 
