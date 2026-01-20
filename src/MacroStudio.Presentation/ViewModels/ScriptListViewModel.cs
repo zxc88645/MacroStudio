@@ -157,6 +157,19 @@ public partial class ScriptListViewModel : ObservableObject
             {
                 SelectedScript.TriggerHotkey = dialog.ResultHotkey;
                 await _scriptManager.UpdateScriptAsync(SelectedScript);
+                
+                // Refresh the script in the collection to update UI display
+                var updatedScript = await _scriptManager.GetScriptAsync(SelectedScript.Id);
+                if (updatedScript != null)
+                {
+                    var index = Scripts.IndexOf(SelectedScript);
+                    if (index >= 0)
+                    {
+                        Scripts[index] = updatedScript;
+                        SelectedScript = updatedScript;
+                    }
+                }
+                
                 await _loggingService.LogInfoAsync("Script hotkey updated", new Dictionary<string, object>
                 {
                     { "ScriptId", SelectedScript.Id },
