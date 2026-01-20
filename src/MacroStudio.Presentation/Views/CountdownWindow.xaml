@@ -14,7 +14,6 @@
             <TextBlock Foreground="#e5e7eb" FontSize="16" FontWeight="SemiBold" Text="Focus Warning" Margin="0,0,0,6"/>
             <TextBlock Foreground="#9ca3af" Text="Automation will start in:" Margin="0,0,0,14"/>
             <TextBlock x:Name="CountdownText" Foreground="#e5e7eb" FontSize="44" FontWeight="Bold" TextAlignment="Center"/>
-            <TextBlock Foreground="#9ca3af" Margin="0,14,0,0" Text="Press Ctrl+Shift+Esc anytime to terminate."/>
         </StackPanel>
     </Border>
 </Window>
