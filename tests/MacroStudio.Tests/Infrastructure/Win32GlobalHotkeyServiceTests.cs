@@ -139,8 +139,9 @@ public class Win32GlobalHotkeyServiceTests : IDisposable
     public async Task RegisterHotkeyAsync_WithConflictingHotkey_ShouldThrowHotkeyRegistrationException()
     {
         // Arrange
-        var hotkey1 = HotkeyDefinition.Create("Test Hotkey 1", HotkeyModifiers.Control | HotkeyModifiers.Alt, VirtualKey.VK_F3);
-        var hotkey2 = HotkeyDefinition.Create("Test Hotkey 2", HotkeyModifiers.Control | HotkeyModifiers.Alt, VirtualKey.VK_F3);
+        // Note: Conflict detection now considers TriggerMode, so same Modifiers/Key with different TriggerMode are not conflicts
+        var hotkey1 = HotkeyDefinition.Create("Test Hotkey 1", HotkeyModifiers.Control | HotkeyModifiers.Alt, VirtualKey.VK_F3, HotkeyTriggerMode.Once);
+        var hotkey2 = HotkeyDefinition.Create("Test Hotkey 2", HotkeyModifiers.Control | HotkeyModifiers.Alt, VirtualKey.VK_F3, HotkeyTriggerMode.Once); // Same TriggerMode = conflict
 
         try
         {
@@ -156,6 +157,40 @@ public class Win32GlobalHotkeyServiceTests : IDisposable
             try
             {
                 await _hotkeyService.UnregisterHotkeyAsync(hotkey1);
+            }
+            catch
+            {
+                // Ignore cleanup errors
+            }
+        }
+    }
+
+    [Fact]
+    public async Task RegisterHotkeyAsync_WithSameModifiersKeyButDifferentTriggerMode_ShouldNotConflict()
+    {
+        // Arrange
+        // Same Modifiers/Key but different TriggerMode should not conflict
+        var hotkey1 = HotkeyDefinition.Create("Test Hotkey 1", HotkeyModifiers.Control | HotkeyModifiers.Alt, VirtualKey.VK_F3, HotkeyTriggerMode.Once);
+        var hotkey2 = HotkeyDefinition.Create("Test Hotkey 2", HotkeyModifiers.Control | HotkeyModifiers.Alt, VirtualKey.VK_F3, HotkeyTriggerMode.RepeatWhileHeld); // Different TriggerMode = no conflict
+
+        try
+        {
+            // Act
+            await _hotkeyService.RegisterHotkeyAsync(hotkey1);
+            await _hotkeyService.RegisterHotkeyAsync(hotkey2); // Should not throw
+
+            // Assert
+            var registeredHotkeys = await _hotkeyService.GetRegisteredHotkeysAsync();
+            Assert.Contains(hotkey1, registeredHotkeys);
+            Assert.Contains(hotkey2, registeredHotkeys);
+        }
+        finally
+        {
+            // Cleanup
+            try
+            {
+                await _hotkeyService.UnregisterHotkeyAsync(hotkey1);
+                await _hotkeyService.UnregisterHotkeyAsync(hotkey2);
             }
             catch
             {
@@ -335,7 +370,9 @@ public class Win32GlobalHotkeyServiceTests : IDisposable
     {
         private readonly object _lockObject = new();
         private readonly HashSet<(uint modifiers, uint vk)> _registered = new();
+        private readonly Queue<MSG> _messageQueue = new();
         private uint _lastError;
+        private uint _currentThreadId = 1;
 
         public bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk)
         {
@@ -363,14 +400,41 @@ public class Win32GlobalHotkeyServiceTests : IDisposable
 
         public bool PeekMessage(out MSG msg, IntPtr hWnd, uint wMsgFilterMin, uint wMsgFilterMax, uint wRemoveMsg)
         {
+            lock (_lockObject)
+            {
+                if (_messageQueue.Count > 0)
+                {
+                    msg = _messageQueue.Dequeue();
+                    return true;
+                }
+            }
+            
             msg = default;
             return false;
         }
 
         public bool TranslateMessage(ref MSG msg) => true;
         public IntPtr DispatchMessage(ref MSG msg) => IntPtr.Zero;
-        public bool PostThreadMessage(uint idThread, uint msg, IntPtr wParam, IntPtr lParam) => true;
-        public uint GetCurrentThreadId() => 1;
+        
+        public bool PostThreadMessage(uint idThread, uint msg, IntPtr wParam, IntPtr lParam)
+        {
+            lock (_lockObject)
+            {
+                // Store the message in the queue so PeekMessage can retrieve it
+                _messageQueue.Enqueue(new MSG
+                {
+                    hwnd = IntPtr.Zero,
+                    message = msg,
+                    wParam = wParam,
+                    lParam = lParam,
+                    time = 0,
+                    pt = new POINT { X = 0, Y = 0 }
+                });
+                return true;
+            }
+        }
+        
+        public uint GetCurrentThreadId() => _currentThreadId;
         public uint GetLastError() => _lastError;
     }
 }

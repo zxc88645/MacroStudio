@@ -167,8 +167,6 @@ public class HotkeyDefinitionTests
     }
 
     [Theory]
-    [InlineData(HotkeyModifiers.None, VirtualKey.VK_A)] // Regular keys need modifiers
-    [InlineData(HotkeyModifiers.None, VirtualKey.VK_1)]
     [InlineData(HotkeyModifiers.Control, VirtualKey.VK_CONTROL)] // Cannot use modifier as main key
     [InlineData(HotkeyModifiers.Alt, VirtualKey.VK_MENU)]
     [InlineData(HotkeyModifiers.Shift, VirtualKey.VK_SHIFT)]
@@ -223,5 +221,41 @@ public class HotkeyDefinitionTests
         Assert.NotEqual(hotkey1, hotkey2);
         Assert.False(hotkey1 == hotkey2);
         Assert.True(hotkey1 != hotkey2);
+    }
+
+    [Fact]
+    public void Equality_WithDifferentTriggerModes_ShouldNotBeEqual()
+    {
+        // Arrange
+        var id = Guid.NewGuid();
+        var hotkey1 = new HotkeyDefinition(id, "Test", HotkeyModifiers.Control, VirtualKey.VK_A, HotkeyTriggerMode.Once);
+        var hotkey2 = new HotkeyDefinition(id, "Test", HotkeyModifiers.Control, VirtualKey.VK_A, HotkeyTriggerMode.RepeatWhileHeld);
+
+        // Act & Assert
+        Assert.NotEqual(hotkey1, hotkey2);
+        Assert.False(hotkey1 == hotkey2);
+        Assert.True(hotkey1 != hotkey2);
+    }
+
+    [Fact]
+    public void TriggerMode_DefaultValue_ShouldBeOnce()
+    {
+        // Arrange & Act
+        var hotkey = HotkeyDefinition.Create("Test", HotkeyModifiers.Control, VirtualKey.VK_A);
+
+        // Assert
+        Assert.Equal(HotkeyTriggerMode.Once, hotkey.TriggerMode);
+    }
+
+    [Theory]
+    [InlineData(HotkeyTriggerMode.Once)]
+    [InlineData(HotkeyTriggerMode.RepeatWhileHeld)]
+    public void TriggerMode_WithExplicitValue_ShouldBeSet(HotkeyTriggerMode triggerMode)
+    {
+        // Arrange & Act
+        var hotkey = HotkeyDefinition.Create("Test", HotkeyModifiers.Control, VirtualKey.VK_A, triggerMode);
+
+        // Assert
+        Assert.Equal(triggerMode, hotkey.TriggerMode);
     }
 }

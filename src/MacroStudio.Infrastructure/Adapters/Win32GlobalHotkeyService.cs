@@ -111,8 +111,12 @@ public class Win32GlobalHotkeyService : IGlobalHotkeyService, IDisposable
             }
 
             // Check for conflicts with existing hotkeys
+            // Conflict occurs when Modifiers, Key, AND TriggerMode all match
+            // Different TriggerMode for same Modifiers/Key is allowed (e.g., Once vs RepeatWhileHeld)
             var conflictingHotkey = _registeredHotkeys.Values
-                .FirstOrDefault(h => h.Modifiers == hotkey.Modifiers && h.Key == hotkey.Key);
+                .FirstOrDefault(h => h.Modifiers == hotkey.Modifiers && 
+                                     h.Key == hotkey.Key && 
+                                     h.TriggerMode == hotkey.TriggerMode);
 
             if (conflictingHotkey != null)
             {
