@@ -155,20 +155,15 @@ public partial class ScriptListViewModel : ObservableObject
 
             if (dialog.ShowDialog() == true && dialog.ResultHotkey != null)
             {
+                var scriptId = SelectedScript.Id;
                 SelectedScript.TriggerHotkey = dialog.ResultHotkey;
                 await _scriptManager.UpdateScriptAsync(SelectedScript);
                 
-                // Refresh the script in the collection to update UI display
-                var updatedScript = await _scriptManager.GetScriptAsync(SelectedScript.Id);
-                if (updatedScript != null)
-                {
-                    var index = Scripts.IndexOf(SelectedScript);
-                    if (index >= 0)
-                    {
-                        Scripts[index] = updatedScript;
-                        SelectedScript = updatedScript;
-                    }
-                }
+                // Script is a domain entity (no INotifyPropertyChanged), so changing TriggerHotkey won't
+                // automatically refresh the ListBox item template. The most reliable fix is to run the same
+                // reload path as the "Refresh" button (clear + reload from storage), then restore selection.
+                await RefreshAsync();
+                SelectedScript = Scripts.FirstOrDefault(s => s.Id == scriptId) ?? Scripts.FirstOrDefault();
                 
                 await _loggingService.LogInfoAsync("Script hotkey updated", new Dictionary<string, object>
                 {
