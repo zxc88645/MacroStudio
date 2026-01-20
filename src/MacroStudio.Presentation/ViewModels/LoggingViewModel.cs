@@ -48,11 +48,26 @@ public partial class LoggingViewModel : ObservableObject
             Entries.Add(e);
     }
 
+    private bool _isClearing = false;
+
     [RelayCommand]
     public async Task ClearAsync()
     {
-        await _loggingService.ClearLogsAsync();
-        Entries.Clear();
+        // 設置清除標誌，防止 OnLogEntryCreated 在清除過程中添加項目
+        _isClearing = true;
+        try
+        {
+            // 先清空 UI 集合，避免競態條件
+            Entries.Clear();
+            
+            // 然後清空服務層的日誌（這會觸發 LogEntryCreated 事件，但由於 _isClearing 為 true，不會添加）
+            await _loggingService.ClearLogsAsync();
+        }
+        finally
+        {
+            // 重置標誌，允許後續的日誌條目正常添加
+            _isClearing = false;
+        }
     }
 
     [RelayCommand]
@@ -83,6 +98,10 @@ public partial class LoggingViewModel : ObservableObject
     {
         try
         {
+            // 如果正在清除日誌，忽略新添加的日誌條目（避免在清除過程中添加項目）
+            if (_isClearing)
+                return;
+
             // Keep a bounded list for UI responsiveness.
             const int max = 5000;
             if (Entries.Count >= max)
