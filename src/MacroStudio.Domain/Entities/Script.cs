@@ -1,3 +1,5 @@
+using MacroStudio.Domain.ValueObjects;
+
 namespace MacroStudio.Domain.Entities;
 
 /// <summary>
@@ -28,6 +30,11 @@ public class Script
             ModifiedAt = DateTime.UtcNow;
         }
     }
+
+    /// <summary>
+    /// Optional hotkey that triggers this script execution.
+    /// </summary>
+    public HotkeyDefinition? TriggerHotkey { get; set; }
 
     /// <summary>
     /// Read-only collection of commands in this script.
@@ -93,7 +100,8 @@ public class Script
     /// <param name="commands">The initial commands for this script.</param>
     /// <param name="createdAt">The timestamp when this script was created.</param>
     /// <param name="modifiedAt">The timestamp when this script was last modified.</param>
-    public Script(Guid id, string name, IEnumerable<Command> commands, DateTime createdAt, DateTime modifiedAt)
+    /// <param name="triggerHotkey">Optional hotkey that triggers this script execution.</param>
+    public Script(Guid id, string name, IEnumerable<Command> commands, DateTime createdAt, DateTime modifiedAt, HotkeyDefinition? triggerHotkey = null)
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Script name cannot be null or empty.", nameof(name));
@@ -103,6 +111,7 @@ public class Script
         _commands = new List<Command>(commands);
         CreatedAt = createdAt;
         ModifiedAt = modifiedAt;
+        TriggerHotkey = triggerHotkey;
     }
 
     /// <summary>

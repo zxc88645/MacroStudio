@@ -201,23 +201,14 @@ public record HotkeyDefinition
     /// <returns>True if the hotkey is valid, false otherwise.</returns>
     public bool IsValid()
     {
-        // Must have at least one modifier (except for function keys and special keys)
-        if (Modifiers == HotkeyModifiers.None)
-        {
-            // Allow function keys and special keys without modifiers
-            return Key >= VirtualKey.VK_F1 && Key <= VirtualKey.VK_F12 ||
-                   Key == VirtualKey.VK_ESCAPE ||
-                   Key == VirtualKey.VK_PAUSE ||
-                   Key == VirtualKey.VK_SNAPSHOT;
-        }
-
         // Key must be valid
         if (!Enum.IsDefined(typeof(VirtualKey), Key))
             return false;
 
-        // Cannot use modifier keys as the main key when modifiers are specified
-        if (Modifiers != HotkeyModifiers.None)
+        // If no modifiers, allow single keys (but not modifier keys themselves)
+        if (Modifiers == HotkeyModifiers.None)
         {
+            // Don't allow modifier keys as single keys
             return Key != VirtualKey.VK_SHIFT &&
                    Key != VirtualKey.VK_CONTROL &&
                    Key != VirtualKey.VK_MENU &&
@@ -231,7 +222,18 @@ public record HotkeyDefinition
                    Key != VirtualKey.VK_RWIN;
         }
 
-        return true;
+        // Cannot use modifier keys as the main key when modifiers are specified
+        return Key != VirtualKey.VK_SHIFT &&
+               Key != VirtualKey.VK_CONTROL &&
+               Key != VirtualKey.VK_MENU &&
+               Key != VirtualKey.VK_LSHIFT &&
+               Key != VirtualKey.VK_RSHIFT &&
+               Key != VirtualKey.VK_LCONTROL &&
+               Key != VirtualKey.VK_RCONTROL &&
+               Key != VirtualKey.VK_LMENU &&
+               Key != VirtualKey.VK_RMENU &&
+               Key != VirtualKey.VK_LWIN &&
+               Key != VirtualKey.VK_RWIN;
     }
 
     /// <summary>
