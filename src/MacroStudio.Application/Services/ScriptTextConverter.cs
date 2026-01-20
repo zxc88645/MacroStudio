@@ -119,6 +119,10 @@ public static class ScriptTextConverter
                 else if (codePart.StartsWith("type_text", StringComparison.OrdinalIgnoreCase))
                 {
                     var text = ParseSingleStringArg(codePart, "type_text");
+                    if (string.IsNullOrEmpty(text))
+                    {
+                        throw new FormatException("type_text cannot be empty. Provide text to type or remove the command.");
+                    }
                     commands.Add(new KeyboardCommand(text));
                 }
                 else if (codePart.StartsWith("key_down", StringComparison.OrdinalIgnoreCase) ||
