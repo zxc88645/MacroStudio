@@ -2,6 +2,9 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MacroStudio.Domain.Entities;
 using MacroStudio.Domain.Interfaces;
+using MacroStudio.Domain.ValueObjects;
+using MacroStudio.Presentation.ViewModels;
+using MacroStudio.Presentation.Views;
 using Microsoft.Win32;
 using System.Collections.ObjectModel;
 
@@ -133,10 +136,49 @@ public partial class ScriptListViewModel : ObservableObject
             Scripts.Add(s);
     }
 
+    [RelayCommand(CanExecute = nameof(CanSetHotkey))]
+    private async Task SetHotkeyAsync()
+    {
+        if (SelectedScript == null) return;
+
+        // Get MainViewModel to disable hotkey triggering during capture
+        var mainWindow = System.Windows.Application.Current?.MainWindow;
+        var mainVm = mainWindow?.DataContext as MainViewModel;
+        mainVm?.SetHotkeyCaptureActive(true);
+
+        try
+        {
+            var dialog = new HotkeyCaptureWindow(SelectedScript.TriggerHotkey)
+            {
+                Owner = mainWindow
+            };
+
+            if (dialog.ShowDialog() == true && dialog.ResultHotkey != null)
+            {
+                SelectedScript.TriggerHotkey = dialog.ResultHotkey;
+                await _scriptManager.UpdateScriptAsync(SelectedScript);
+                await _loggingService.LogInfoAsync("Script hotkey updated", new Dictionary<string, object>
+                {
+                    { "ScriptId", SelectedScript.Id },
+                    { "ScriptName", SelectedScript.Name },
+                    { "Hotkey", dialog.ResultHotkey.GetDisplayString() }
+                });
+            }
+        }
+        finally
+        {
+            // Re-enable hotkey triggering
+            mainVm?.SetHotkeyCaptureActive(false);
+        }
+    }
+
+    private bool CanSetHotkey() => SelectedScript != null;
+
     partial void OnSelectedScriptChanged(Script? oldValue, Script? newValue)
     {
         DeleteSelectedCommand.NotifyCanExecuteChanged();
         ExportSelectedCommand.NotifyCanExecuteChanged();
+        SetHotkeyCommand.NotifyCanExecuteChanged();
         SelectedScriptChanged?.Invoke(this, newValue);
     }
 }

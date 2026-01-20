@@ -3,8 +3,12 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:conv="clr-namespace:MacroStudio.Presentation.Converters"
              mc:Ignorable="d"
              d:DesignHeight="450" d:DesignWidth="320">
+    <UserControl.Resources>
+        <conv:HotkeyDisplayConverter x:Key="HotkeyDisplayConverter"/>
+    </UserControl.Resources>
     <Border Style="{DynamicResource CardBorder}" Padding="14">
         <DockPanel LastChildFill="True">
             <StackPanel DockPanel.Dock="Top" Orientation="Vertical" Margin="0,0,0,8">
@@ -22,14 +26,33 @@
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                     <Button Content="Import" Width="72" Margin="0,0,8,0" Command="{Binding ScriptList.ImportCommand}" />
-                    <Button Content="Export" Width="72" Command="{Binding ScriptList.ExportSelectedCommand}" />
+                    <Button Content="Export" Width="72" Margin="0,0,8,0" Command="{Binding ScriptList.ExportSelectedCommand}" />
+                    <Button Content="設置熱鍵" Width="90" Command="{Binding ScriptList.SetHotkeyCommand}" />
                 </StackPanel>
             </StackPanel>
 
             <ListBox ItemsSource="{Binding ScriptList.Scripts}"
                      SelectedItem="{Binding ScriptList.SelectedScript, Mode=TwoWay}"
-                     DisplayMemberPath="Name"
-                     BorderThickness="0"/>
+                     BorderThickness="0">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding Name}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <TextBlock Foreground="{DynamicResource TextMutedBrush}" 
+                                       FontSize="11"
+                                       VerticalAlignment="Center">
+                                <TextBlock.Text>
+                                    <Binding Path="TriggerHotkey">
+                                        <Binding.Converter>
+                                            <StaticResource ResourceKey="HotkeyDisplayConverter"/>
+                                        </Binding.Converter>
+                                    </Binding>
+                                </TextBlock.Text>
+                            </TextBlock>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
         </DockPanel>
     </Border>
 </UserControl>
