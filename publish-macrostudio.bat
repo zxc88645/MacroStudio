@@ -1,16 +1,34 @@
 @echo off
-REM Build & publish MacroStudio as self-contained single-file EXE (win-x64)
+setlocal
+
+REM ========================
+REM Build configuration
+REM ========================
+set CONFIG=Release
+set RID=win-x64
+set PROJECT=src\MacroStudio.Presentation\MacroStudio.Presentation.csproj
+set OUTPUT=artifacts\publish\%RID%
+
 cd /d "%~dp0"
-dotnet publish src\MacroStudio.Presentation\MacroStudio.Presentation.csproj ^
-  -c Release -r win-x64 --self-contained true ^
+
+dotnet publish "%PROJECT%" ^
+  -c %CONFIG% ^
+  -r %RID% ^
+  --self-contained true ^
   /p:PublishSingleFile=true ^
+  /p:EnableCompressionInSingleFile=true ^
   /p:IncludeNativeLibrariesForSelfExtract=true ^
   /p:PublishReadyToRun=true ^
-  /p:DebugType=None /p:DebugSymbols=false ^
-  -o artifacts\publish\win-x64
+  /p:DebugType=None ^
+  /p:DebugSymbols=false ^
+  -o "%OUTPUT%"
+
+if errorlevel 1 (
+  echo Publish failed.
+  exit /b 1
+)
 
 echo.
 echo Publish completed. Output:
-echo   artifacts\publish\win-x64\MacroStudio.Presentation.exe
+echo   %OUTPUT%\MacroStudio.Presentation.exe
 pause
-
