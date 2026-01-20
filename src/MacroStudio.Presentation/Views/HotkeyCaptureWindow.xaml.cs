@@ -11,6 +11,7 @@ public partial class HotkeyCaptureWindow : Window
     private VirtualKey? _currentKey = null;
     private bool _isCapturing = true;
     private HotkeyTriggerMode _selectedTriggerMode = HotkeyTriggerMode.Once;
+    private bool _swallowKeystroke = true;
 
     public HotkeyDefinition? ResultHotkey { get; private set; }
 
@@ -23,6 +24,8 @@ public partial class HotkeyCaptureWindow : Window
             _currentModifiers = existingHotkey.Modifiers;
             _currentKey = existingHotkey.Key;
             _selectedTriggerMode = existingHotkey.TriggerMode;
+            _swallowKeystroke = existingHotkey.SwallowKeystroke;
+            SwallowKeystrokeCheck.IsChecked = _swallowKeystroke;
             
             // Update radio buttons based on existing hotkey mode
             if (_selectedTriggerMode == HotkeyTriggerMode.RepeatWhileHeld)
@@ -190,7 +193,8 @@ public partial class HotkeyCaptureWindow : Window
                 "Script Hotkey",
                 _currentModifiers,
                 _currentKey.Value,
-                _selectedTriggerMode
+                _selectedTriggerMode,
+                SwallowKeystrokeCheck.IsChecked == true
             );
             
             if (hotkey.IsValid())
@@ -250,7 +254,8 @@ public partial class HotkeyCaptureWindow : Window
                 "Script Hotkey",
                 _currentModifiers,
                 _currentKey.Value,
-                _selectedTriggerMode
+                _selectedTriggerMode,
+                SwallowKeystrokeCheck.IsChecked == true
             );
             
             if (ResultHotkey.IsValid())
