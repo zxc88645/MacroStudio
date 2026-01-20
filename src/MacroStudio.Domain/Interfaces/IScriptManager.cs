@@ -96,6 +96,12 @@ public interface IScriptManager
     /// <param name="id">Script id to export.</param>
     /// <param name="filePath">Path to write the exported file.</param>
     Task ExportScriptAsync(Guid id, string filePath);
+
+    /// <summary>
+    /// Registers hotkeys for all scripts that have trigger hotkeys defined.
+    /// </summary>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    Task RegisterAllScriptHotkeysAsync();
 }
 
 /// <summary>
