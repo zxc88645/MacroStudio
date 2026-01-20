@@ -27,12 +27,23 @@ public partial class MainWindow : Window
         // Auto-scroll to bottom when new items are added
         if (e.Action == NotifyCollectionChangedAction.Add && LogsListBox.Items.Count > 0)
         {
-            // Use Dispatcher to ensure UI thread execution
+            // 使用較低的優先級，確保在集合更新完成後再滾動
+            // 避免在集合變更過程中訪問 Items，導致同步問題
             Dispatcher.BeginInvoke(() =>
             {
-                var lastItem = LogsListBox.Items[LogsListBox.Items.Count - 1];
-                LogsListBox.ScrollIntoView(lastItem);
-            }, System.Windows.Threading.DispatcherPriority.Loaded);
+                try
+                {
+                    if (LogsListBox.Items.Count > 0)
+                    {
+                        var lastItem = LogsListBox.Items[LogsListBox.Items.Count - 1];
+                        LogsListBox.ScrollIntoView(lastItem);
+                    }
+                }
+                catch
+                {
+                    // 忽略滾動錯誤，避免崩潰
+                }
+            }, System.Windows.Threading.DispatcherPriority.ContextIdle);
         }
     }
 }

@@ -3,6 +3,8 @@ using CommunityToolkit.Mvvm.Input;
 using MacroStudio.Domain.Interfaces;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
+using System.Windows;
 
 namespace MacroStudio.Presentation.ViewModels;
 
@@ -43,9 +45,23 @@ public partial class LoggingViewModel : ObservableObject
 
         var entries = await _loggingService.GetLogEntriesAsync(filter);
 
-        Entries.Clear();
-        foreach (var e in entries.OrderBy(e => e.Timestamp))
-            Entries.Add(e);
+        // 確保在 UI 線程上修改集合
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
+        if (dispatcher != null && !dispatcher.CheckAccess())
+        {
+            await dispatcher.InvokeAsync(() =>
+            {
+                Entries.Clear();
+                foreach (var e in entries.OrderBy(e => e.Timestamp))
+                    Entries.Add(e);
+            });
+        }
+        else
+        {
+            Entries.Clear();
+            foreach (var e in entries.OrderBy(e => e.Timestamp))
+                Entries.Add(e);
+        }
     }
 
     private bool _isClearing = false;
@@ -57,8 +73,16 @@ public partial class LoggingViewModel : ObservableObject
         _isClearing = true;
         try
         {
-            // 先清空 UI 集合，避免競態條件
-            Entries.Clear();
+            // 確保在 UI 線程上清空集合
+            var dispatcher = System.Windows.Application.Current?.Dispatcher;
+            if (dispatcher != null && !dispatcher.CheckAccess())
+            {
+                await dispatcher.InvokeAsync(() => Entries.Clear());
+            }
+            else
+            {
+                Entries.Clear();
+            }
             
             // 然後清空服務層的日誌（這會觸發 LogEntryCreated 事件，但由於 _isClearing 為 true，不會添加）
             await _loggingService.ClearLogsAsync();
@@ -94,6 +118,31 @@ public partial class LoggingViewModel : ObservableObject
         await _loggingService.LogInfoAsync("Logs exported (UI)", new Dictionary<string, object> { { "ExportPath", path } });
     }
 
+    [RelayCommand]
+    public void Copy()
+    {
+        if (Entries.Count == 0)
+            return;
+
+        try
+        {
+            // 使用與 LogEntryDisplayConverter 相同的格式
+            var lines = Entries.Select(entry =>
+            {
+                var ts = entry.Timestamp.ToLocalTime().ToString("HH:mm:ss.fff");
+                return $"[{ts}] [{entry.Level}] {entry.Message}";
+            });
+
+            var text = string.Join(Environment.NewLine, lines);
+            Clipboard.SetText(text);
+        }
+        catch (Exception ex)
+        {
+            // 如果複製失敗，記錄錯誤但不拋出異常
+            System.Diagnostics.Debug.WriteLine($"Failed to copy logs to clipboard: {ex.Message}");
+        }
+    }
+
     private void OnLogEntryCreated(object? sender, LogEntryCreatedEventArgs e)
     {
         try
@@ -102,16 +151,41 @@ public partial class LoggingViewModel : ObservableObject
             if (_isClearing)
                 return;
 
-            // Keep a bounded list for UI responsiveness.
-            const int max = 5000;
-            if (Entries.Count >= max)
-                Entries.RemoveAt(0);
-
-            Entries.Add(e.LogEntry);
+            // 確保在 UI 線程上修改集合，避免 ItemsControl 同步問題
+            var dispatcher = System.Windows.Application.Current?.Dispatcher;
+            if (dispatcher != null && !dispatcher.CheckAccess())
+            {
+                dispatcher.BeginInvoke(() => AddLogEntry(e.LogEntry), System.Windows.Threading.DispatcherPriority.Normal);
+            }
+            else
+            {
+                AddLogEntry(e.LogEntry);
+            }
         }
         catch
         {
             // Never throw from event handler (protect UI thread).
+        }
+    }
+
+    private void AddLogEntry(LogEntry entry)
+    {
+        try
+        {
+            // Keep a bounded list for UI responsiveness.
+            // 注意：此方法必須在 UI 線程上調用
+            const int max = 5000;
+            if (Entries.Count >= max)
+            {
+                // 使用 RemoveAt 而不是 Remove，避免在快速添加時出現同步問題
+                Entries.RemoveAt(0);
+            }
+
+            Entries.Add(entry);
+        }
+        catch
+        {
+            // 忽略集合修改錯誤，避免崩潰
         }
     }
 }
