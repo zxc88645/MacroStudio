@@ -46,8 +46,8 @@ public class ImportExportAndSettingsIntegrationTests
         services.AddLogging();
         services.AddSingleton<IFileStorageService>(sp =>
             new JsonFileStorageService(sp.GetRequiredService<ILogger<JsonFileStorageService>>(), storageDir));
-        // ScriptManager depends on IGlobalHotkeyService even though this test doesn't exercise hotkeys.
-        services.AddSingleton<IGlobalHotkeyService, NoopGlobalHotkeyService>();
+        // ScriptManager depends on IScriptHotkeyHookService even though this test doesn't exercise hotkeys.
+        services.AddSingleton<IScriptHotkeyHookService, NoopScriptHotkeyHookService>();
         services.AddSingleton<IScriptManager, ScriptManager>();
 
         var provider = services.BuildServiceProvider();
@@ -65,19 +65,10 @@ public class ImportExportAndSettingsIntegrationTests
         Assert.True(imported.CommandCount >= 1);
     }
 
-    private sealed class NoopGlobalHotkeyService : IGlobalHotkeyService
+    private sealed class NoopScriptHotkeyHookService : IScriptHotkeyHookService
     {
         public event EventHandler<HotkeyPressedEventArgs>? HotkeyPressed;
-
-        public Task RegisterHotkeyAsync(HotkeyDefinition hotkey) => Task.CompletedTask;
-        public Task UnregisterHotkeyAsync(HotkeyDefinition hotkey) => Task.CompletedTask;
-        public Task UnregisterAllHotkeysAsync() => Task.CompletedTask;
-        public Task<IEnumerable<HotkeyDefinition>> GetRegisteredHotkeysAsync() => Task.FromResult<IEnumerable<HotkeyDefinition>>(Array.Empty<HotkeyDefinition>());
-        public Task<bool> IsHotkeyRegisteredAsync(HotkeyDefinition hotkey) => Task.FromResult(false);
-        public Task<bool> IsReadyAsync() => Task.FromResult(true);
-
-        // Helper for completeness if any future test wants to simulate presses.
-        public void Raise(HotkeyDefinition hotkey) => HotkeyPressed?.Invoke(this, new HotkeyPressedEventArgs(hotkey, DateTime.Now));
+        public void SetScriptHotkeys(IReadOnlyDictionary<Guid, HotkeyDefinition> hotkeys) { }
     }
 }
 

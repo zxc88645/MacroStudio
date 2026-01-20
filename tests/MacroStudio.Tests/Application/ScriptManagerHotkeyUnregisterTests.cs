@@ -15,7 +15,7 @@ namespace MacroStudio.Tests.Application;
 public class ScriptManagerHotkeyUnregisterTests
 {
     [Fact]
-    public async Task DeleteScriptAsync_WithTrackedHotkey_UnregistersHotkey()
+    public async Task DeleteScriptAsync_WithTrackedHotkey_RemovesHotkeyFromHookMapping()
     {
         // Arrange
         var tempDir = Path.Combine(Path.GetTempPath(), "MacroStudio.Tests", Guid.NewGuid().ToString("N"));
@@ -23,32 +23,16 @@ public class ScriptManagerHotkeyUnregisterTests
 
         try
         {
-            var mockHotkeyService = new Mock<IGlobalHotkeyService>();
-            var registeredHotkeys = new List<HotkeyDefinition>();
-            var unregisteredHotkeys = new List<HotkeyDefinition>();
-
-            mockHotkeyService.Setup(s => s.RegisterHotkeyAsync(It.IsAny<HotkeyDefinition>()))
-                .Returns<HotkeyDefinition>(hotkey =>
-                {
-                    registeredHotkeys.Add(hotkey);
-                    return Task.CompletedTask;
-                });
-
-            mockHotkeyService.Setup(s => s.UnregisterHotkeyAsync(It.IsAny<HotkeyDefinition>()))
-                .Returns<HotkeyDefinition>(hotkey =>
-                {
-                    unregisteredHotkeys.Add(hotkey);
-                    return Task.CompletedTask;
-                });
-
-            mockHotkeyService.Setup(s => s.GetRegisteredHotkeysAsync())
-                .ReturnsAsync(() => registeredHotkeys.AsEnumerable());
+            var mockHookService = new Mock<IScriptHotkeyHookService>();
+            IReadOnlyDictionary<Guid, HotkeyDefinition>? lastMapping = null;
+            mockHookService.Setup(s => s.SetScriptHotkeys(It.IsAny<IReadOnlyDictionary<Guid, HotkeyDefinition>>()))
+                .Callback<IReadOnlyDictionary<Guid, HotkeyDefinition>>(m => lastMapping = new Dictionary<Guid, HotkeyDefinition>(m));
 
             var storageService = new JsonFileStorageService(
                 NullLogger<JsonFileStorageService>.Instance, tempDir);
             var scriptManager = new ScriptManager(
                 storageService,
-                mockHotkeyService.Object,
+                mockHookService.Object,
                 NullLogger<ScriptManager>.Instance);
 
             // Create script with hotkey
@@ -60,20 +44,19 @@ public class ScriptManagerHotkeyUnregisterTests
                 HotkeyTriggerMode.Once);
             script.TriggerHotkey = hotkey;
 
-            // Register hotkey through ScriptManager (this tracks it)
+            // Update hotkey through ScriptManager (this should update hook mapping)
             await scriptManager.UpdateScriptAsync(script);
 
-            // Verify hotkey was registered
-            Assert.Contains(hotkey, registeredHotkeys);
-            Assert.Empty(unregisteredHotkeys);
+            Assert.NotNull(lastMapping);
+            Assert.True(lastMapping!.ContainsKey(script.Id));
 
             // Act: Delete script
             var deleted = await scriptManager.DeleteScriptAsync(script.Id);
 
             // Assert
             Assert.True(deleted);
-            Assert.Contains(hotkey, unregisteredHotkeys);
-            mockHotkeyService.Verify(s => s.UnregisterHotkeyAsync(hotkey), Times.Once);
+            Assert.NotNull(lastMapping);
+            Assert.False(lastMapping!.ContainsKey(script.Id));
         }
         finally
         {
@@ -82,7 +65,7 @@ public class ScriptManagerHotkeyUnregisterTests
     }
 
     [Fact]
-    public async Task DeleteScriptAsync_WithUntrackedHotkey_StillUnregistersHotkey()
+    public async Task DeleteScriptAsync_WithUntrackedHotkey_RemovesHotkeyFromHookMapping()
     {
         // Arrange
         var tempDir = Path.Combine(Path.GetTempPath(), "MacroStudio.Tests", Guid.NewGuid().ToString("N"));
@@ -90,70 +73,37 @@ public class ScriptManagerHotkeyUnregisterTests
 
         try
         {
-            var mockHotkeyService = new Mock<IGlobalHotkeyService>();
-            var registeredHotkeys = new List<HotkeyDefinition>();
-            var unregisteredHotkeys = new List<HotkeyDefinition>();
+            var mockHookService = new Mock<IScriptHotkeyHookService>();
+            IReadOnlyDictionary<Guid, HotkeyDefinition>? lastMapping = null;
+            mockHookService.Setup(s => s.SetScriptHotkeys(It.IsAny<IReadOnlyDictionary<Guid, HotkeyDefinition>>()))
+                .Callback<IReadOnlyDictionary<Guid, HotkeyDefinition>>(m => lastMapping = new Dictionary<Guid, HotkeyDefinition>(m));
 
-            // Simulate hotkey registered elsewhere (e.g., MainViewModel)
-            var hotkey = HotkeyDefinition.Create(
+            var storageService = new JsonFileStorageService(
+                NullLogger<JsonFileStorageService>.Instance, tempDir);
+            var scriptManager = new ScriptManager(
+                storageService,
+                mockHookService.Object,
+                NullLogger<ScriptManager>.Instance);
+
+            // Create script with hotkey
+            var script = await scriptManager.CreateScriptAsync("Test Script");
+            var hk = HotkeyDefinition.Create(
                 "Test Hotkey",
                 HotkeyModifiers.Control | HotkeyModifiers.Shift,
                 VirtualKey.VK_F2,
                 HotkeyTriggerMode.Once);
-            registeredHotkeys.Add(hotkey);
+            script.TriggerHotkey = hk;
 
-            mockHotkeyService.Setup(s => s.RegisterHotkeyAsync(It.IsAny<HotkeyDefinition>()))
-                .Returns<HotkeyDefinition>(h =>
-                {
-                    registeredHotkeys.Add(h);
-                    return Task.CompletedTask;
-                });
-
-            mockHotkeyService.Setup(s => s.UnregisterHotkeyAsync(It.IsAny<HotkeyDefinition>()))
-                .Returns<HotkeyDefinition>(h =>
-                {
-                    unregisteredHotkeys.Add(h);
-                    registeredHotkeys.Remove(h);
-                    return Task.CompletedTask;
-                });
-
-            mockHotkeyService.Setup(s => s.GetRegisteredHotkeysAsync())
-                .ReturnsAsync(() => registeredHotkeys.AsEnumerable());
-
-            var storageService = new JsonFileStorageService(
-                NullLogger<JsonFileStorageService>.Instance, tempDir);
-            var scriptManager = new ScriptManager(
-                storageService,
-                mockHotkeyService.Object,
-                NullLogger<ScriptManager>.Instance);
-
-            // Create script with hotkey (same Modifiers/Key/TriggerMode but different instance)
-            var script = await scriptManager.CreateScriptAsync("Test Script");
-            // Use a different HotkeyDefinition instance with same Modifiers/Key/TriggerMode
-            var scriptHotkey = new HotkeyDefinition(
-                Guid.NewGuid(), // Different ID
-                "Script Hotkey", // Different name
-                hotkey.Modifiers,
-                hotkey.Key,
-                hotkey.TriggerMode);
-            script.TriggerHotkey = scriptHotkey;
-
-            // Save script but don't register through ScriptManager (simulating MainViewModel registration)
             await scriptManager.UpdateScriptAsync(script);
-            // Manually register through hotkey service (simulating MainViewModel)
-            await mockHotkeyService.Object.RegisterHotkeyAsync(hotkey);
-
-            // Verify hotkey is registered
-            Assert.Contains(hotkey, registeredHotkeys);
-            Assert.Empty(unregisteredHotkeys);
+            Assert.NotNull(lastMapping);
+            Assert.True(lastMapping!.ContainsKey(script.Id));
 
             // Act: Delete script
             var deleted = await scriptManager.DeleteScriptAsync(script.Id);
 
-            // Assert: Should still unregister even though not tracked
             Assert.True(deleted);
-            // Should attempt unregister with script's hotkey
-            mockHotkeyService.Verify(s => s.UnregisterHotkeyAsync(It.IsAny<HotkeyDefinition>()), Times.AtLeastOnce);
+            Assert.NotNull(lastMapping);
+            Assert.False(lastMapping!.ContainsKey(script.Id));
         }
         finally
         {
@@ -162,7 +112,7 @@ public class ScriptManagerHotkeyUnregisterTests
     }
 
     [Fact]
-    public async Task DeleteScriptAsync_WithHotkeyMatchingByModifiersKey_UnregistersCorrectHotkey()
+    public async Task DeleteScriptAsync_WithHotkeyMatchingByModifiersKey_RemovesFromHookMapping()
     {
         // Arrange
         var tempDir = Path.Combine(Path.GetTempPath(), "MacroStudio.Tests", Guid.NewGuid().ToString("N"));
@@ -170,80 +120,40 @@ public class ScriptManagerHotkeyUnregisterTests
 
         try
         {
-            var mockHotkeyService = new Mock<IGlobalHotkeyService>();
-            var registeredHotkeys = new List<HotkeyDefinition>();
-            var unregisteredHotkeys = new List<HotkeyDefinition>();
-
-            // Register a hotkey with specific Modifiers/Key/TriggerMode
-            var registeredHotkey = HotkeyDefinition.Create(
-                "Registered Hotkey",
-                HotkeyModifiers.Control | HotkeyModifiers.Alt,
-                VirtualKey.VK_F3,
-                HotkeyTriggerMode.RepeatWhileHeld);
-            registeredHotkeys.Add(registeredHotkey);
-
-            mockHotkeyService.Setup(s => s.RegisterHotkeyAsync(It.IsAny<HotkeyDefinition>()))
-                .Returns<HotkeyDefinition>(h =>
-                {
-                    registeredHotkeys.Add(h);
-                    return Task.CompletedTask;
-                });
-
-            mockHotkeyService.Setup(s => s.UnregisterHotkeyAsync(It.IsAny<HotkeyDefinition>()))
-                .Returns<HotkeyDefinition>(h =>
-                {
-                    // First attempt might fail if ID doesn't match
-                    var matching = registeredHotkeys.FirstOrDefault(rh =>
-                        rh.Modifiers == h.Modifiers &&
-                        rh.Key == h.Key &&
-                        rh.TriggerMode == h.TriggerMode);
-                    
-                    if (matching != null)
-                    {
-                        unregisteredHotkeys.Add(matching);
-                        registeredHotkeys.Remove(matching);
-                    }
-                    else
-                    {
-                        throw new HotkeyRegistrationException("Hotkey not found");
-                    }
-                    return Task.CompletedTask;
-                });
-
-            mockHotkeyService.Setup(s => s.GetRegisteredHotkeysAsync())
-                .ReturnsAsync(() => registeredHotkeys.AsEnumerable());
+            var mockHookService = new Mock<IScriptHotkeyHookService>();
+            IReadOnlyDictionary<Guid, HotkeyDefinition>? lastMapping = null;
+            mockHookService.Setup(s => s.SetScriptHotkeys(It.IsAny<IReadOnlyDictionary<Guid, HotkeyDefinition>>()))
+                .Callback<IReadOnlyDictionary<Guid, HotkeyDefinition>>(m => lastMapping = new Dictionary<Guid, HotkeyDefinition>(m));
 
             var storageService = new JsonFileStorageService(
                 NullLogger<JsonFileStorageService>.Instance, tempDir);
             var scriptManager = new ScriptManager(
                 storageService,
-                mockHotkeyService.Object,
+                mockHookService.Object,
                 NullLogger<ScriptManager>.Instance);
 
             // Create script with hotkey that has same Modifiers/Key/TriggerMode but different ID
             var script = await scriptManager.CreateScriptAsync("Test Script");
-            var scriptHotkey = new HotkeyDefinition(
-                Guid.NewGuid(), // Different ID
-                "Script Hotkey", // Different name
-                registeredHotkey.Modifiers,
-                registeredHotkey.Key,
-                registeredHotkey.TriggerMode);
+            var scriptHotkey = HotkeyDefinition.Create(
+                "Script Hotkey",
+                HotkeyModifiers.Control | HotkeyModifiers.Alt,
+                VirtualKey.VK_F3,
+                HotkeyTriggerMode.RepeatWhileHeld);
             script.TriggerHotkey = scriptHotkey;
 
             // Save script
             await scriptManager.UpdateScriptAsync(script);
 
-            // Verify hotkey is registered
-            Assert.Contains(registeredHotkey, registeredHotkeys);
-            Assert.Empty(unregisteredHotkeys);
+            Assert.NotNull(lastMapping);
+            Assert.True(lastMapping!.ContainsKey(script.Id));
 
             // Act: Delete script
             var deleted = await scriptManager.DeleteScriptAsync(script.Id);
 
-            // Assert: Should find and unregister matching hotkey
+            // Assert
             Assert.True(deleted);
-            Assert.Contains(registeredHotkey, unregisteredHotkeys);
-            Assert.DoesNotContain(registeredHotkey, registeredHotkeys);
+            Assert.NotNull(lastMapping);
+            Assert.False(lastMapping!.ContainsKey(script.Id));
         }
         finally
         {
@@ -252,7 +162,7 @@ public class ScriptManagerHotkeyUnregisterTests
     }
 
     [Fact]
-    public async Task DeleteScriptAsync_WithoutHotkey_DoesNotCallUnregister()
+    public async Task DeleteScriptAsync_WithoutHotkey_LeavesHookMappingEmpty()
     {
         // Arrange
         var tempDir = Path.Combine(Path.GetTempPath(), "MacroStudio.Tests", Guid.NewGuid().ToString("N"));
@@ -260,13 +170,16 @@ public class ScriptManagerHotkeyUnregisterTests
 
         try
         {
-            var mockHotkeyService = new Mock<IGlobalHotkeyService>();
+            var mockHookService = new Mock<IScriptHotkeyHookService>();
+            IReadOnlyDictionary<Guid, HotkeyDefinition>? lastMapping = null;
+            mockHookService.Setup(s => s.SetScriptHotkeys(It.IsAny<IReadOnlyDictionary<Guid, HotkeyDefinition>>()))
+                .Callback<IReadOnlyDictionary<Guid, HotkeyDefinition>>(m => lastMapping = new Dictionary<Guid, HotkeyDefinition>(m));
 
             var storageService = new JsonFileStorageService(
                 NullLogger<JsonFileStorageService>.Instance, tempDir);
             var scriptManager = new ScriptManager(
                 storageService,
-                mockHotkeyService.Object,
+                mockHookService.Object,
                 NullLogger<ScriptManager>.Instance);
 
             // Create script without hotkey
@@ -278,7 +191,9 @@ public class ScriptManagerHotkeyUnregisterTests
 
             // Assert
             Assert.True(deleted);
-            mockHotkeyService.Verify(s => s.UnregisterHotkeyAsync(It.IsAny<HotkeyDefinition>()), Times.Never);
+            // No hotkeys should have been set (or if called, should be empty)
+            if (lastMapping != null)
+                Assert.Empty(lastMapping);
         }
         finally
         {
@@ -287,7 +202,7 @@ public class ScriptManagerHotkeyUnregisterTests
     }
 
     [Fact]
-    public async Task DeleteScriptAsync_WithHotkeyNotInCache_LoadsFromStorageAndUnregisters()
+    public async Task DeleteScriptAsync_WithHotkeyNotInCache_RemovesFromHookMapping()
     {
         // Arrange
         var tempDir = Path.Combine(Path.GetTempPath(), "MacroStudio.Tests", Guid.NewGuid().ToString("N"));
@@ -295,21 +210,16 @@ public class ScriptManagerHotkeyUnregisterTests
 
         try
         {
-            var mockHotkeyService = new Mock<IGlobalHotkeyService>();
-            var unregisteredHotkeys = new List<HotkeyDefinition>();
-
-            mockHotkeyService.Setup(s => s.UnregisterHotkeyAsync(It.IsAny<HotkeyDefinition>()))
-                .Returns<HotkeyDefinition>(h =>
-                {
-                    unregisteredHotkeys.Add(h);
-                    return Task.CompletedTask;
-                });
+            var mockHookService = new Mock<IScriptHotkeyHookService>();
+            IReadOnlyDictionary<Guid, HotkeyDefinition>? lastMapping = null;
+            mockHookService.Setup(s => s.SetScriptHotkeys(It.IsAny<IReadOnlyDictionary<Guid, HotkeyDefinition>>()))
+                .Callback<IReadOnlyDictionary<Guid, HotkeyDefinition>>(m => lastMapping = new Dictionary<Guid, HotkeyDefinition>(m));
 
             var storageService = new JsonFileStorageService(
                 NullLogger<JsonFileStorageService>.Instance, tempDir);
             var scriptManager = new ScriptManager(
                 storageService,
-                mockHotkeyService.Object,
+                mockHookService.Object,
                 NullLogger<ScriptManager>.Instance);
 
             // Create script with hotkey
@@ -325,16 +235,16 @@ public class ScriptManagerHotkeyUnregisterTests
             // Clear cache by creating a new ScriptManager instance
             var scriptManager2 = new ScriptManager(
                 storageService,
-                mockHotkeyService.Object,
+                mockHookService.Object,
                 NullLogger<ScriptManager>.Instance);
 
             // Act: Delete script (not in cache)
             var deleted = await scriptManager2.DeleteScriptAsync(script.Id);
 
-            // Assert: Should load from storage and unregister
+            // Assert
             Assert.True(deleted);
-            Assert.Contains(hotkey, unregisteredHotkeys);
-            mockHotkeyService.Verify(s => s.UnregisterHotkeyAsync(hotkey), Times.Once);
+            Assert.NotNull(lastMapping);
+            Assert.False(lastMapping!.ContainsKey(script.Id));
         }
         finally
         {
