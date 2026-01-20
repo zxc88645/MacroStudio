@@ -218,6 +218,41 @@ public class CommandTests
     }
 
     [Fact]
+    public void KeyPressCommand_Constructor_SetsPropertiesCorrectly()
+    {
+        // Arrange
+        var key = VirtualKey.VK_A;
+
+        // Act
+        var down = new KeyPressCommand(key, isDown: true);
+        var up = new KeyPressCommand(key, isDown: false);
+
+        // Assert
+        Assert.Equal(key, down.Key);
+        Assert.True(down.IsDown);
+        Assert.Equal("Key Press", down.DisplayName);
+        Assert.Contains("Down", down.Description);
+
+        Assert.Equal(key, up.Key);
+        Assert.False(up.IsDown);
+        Assert.Contains("Up", up.Description);
+    }
+
+    [Fact]
+    public void KeyPressCommand_IsValid_WithValidKey_ReturnsTrue()
+    {
+        var command = new KeyPressCommand(VirtualKey.VK_RETURN, isDown: true);
+        Assert.True(command.IsValid());
+    }
+
+    [Fact]
+    public void KeyPressCommand_IsValid_WithInvalidKey_ReturnsFalse()
+    {
+        var command = new KeyPressCommand((VirtualKey)99999, isDown: true);
+        Assert.False(command.IsValid());
+    }
+
+    [Fact]
     public void Command_Clone_CreatesNewInstanceWithDifferentId()
     {
         // Arrange

@@ -63,7 +63,7 @@ public class SerializationRoundTripPropertyTests
                 var delay = TimeSpan.FromMilliseconds(i * 10);
                 var cmdCreatedAt = createdAt.AddMilliseconds(i);
 
-                Command cmd = (i % 4) switch
+                Command cmd = (i % 5) switch
                 {
                     0 => new MouseMoveCommand(Guid.NewGuid(), delay, cmdCreatedAt, new MacroStudio.Domain.ValueObjects.Point(i, i + 1)),
                     1 => new MouseClickCommand(
@@ -73,6 +73,7 @@ public class SerializationRoundTripPropertyTests
                         MacroStudio.Domain.ValueObjects.MouseButton.Left,
                         MacroStudio.Domain.ValueObjects.ClickType.Click),
                     2 => new KeyboardCommand(Guid.NewGuid(), delay, cmdCreatedAt, $"Text{i}", Array.Empty<MacroStudio.Domain.ValueObjects.VirtualKey>()),
+                    3 => new KeyPressCommand(Guid.NewGuid(), delay, cmdCreatedAt, MacroStudio.Domain.ValueObjects.VirtualKey.VK_A, isDown: (i % 2 == 0)),
                     _ => new SleepCommand(Guid.NewGuid(), delay, cmdCreatedAt, TimeSpan.FromMilliseconds(50 + i)),
                 };
 
@@ -114,6 +115,10 @@ public class SerializationRoundTripPropertyTests
                         if (ak.Keys.Count != bk.Keys.Count) return false;
                         for (var k = 0; k < ak.Keys.Count; k++)
                             if (ak.Keys[k] != bk.Keys[k]) return false;
+                        break;
+                    case KeyPressCommand akp when bc is KeyPressCommand bkp:
+                        if (akp.Key != bkp.Key) return false;
+                        if (akp.IsDown != bkp.IsDown) return false;
                         break;
                     case SleepCommand aslp when bc is SleepCommand bslp:
                         if (aslp.Duration != bslp.Duration) return false;
