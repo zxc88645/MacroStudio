@@ -165,10 +165,13 @@ public partial class ScriptListViewModel : ObservableObject
                 await RefreshAsync();
                 SelectedScript = Scripts.FirstOrDefault(s => s.Id == scriptId) ?? Scripts.FirstOrDefault();
                 
+                // Selection might be null if there are no scripts loaded; avoid null dereference.
+                var selected = SelectedScript;
+
                 await _loggingService.LogInfoAsync("Script hotkey updated", new Dictionary<string, object>
                 {
-                    { "ScriptId", SelectedScript.Id },
-                    { "ScriptName", SelectedScript.Name },
+                    { "ScriptId", selected?.Id.ToString() ?? string.Empty },
+                    { "ScriptName", selected?.Name ?? string.Empty },
                     { "Hotkey", dialog.ResultHotkey.GetDisplayString() }
                 });
             }
