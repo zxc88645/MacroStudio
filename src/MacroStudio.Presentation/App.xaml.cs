@@ -3,8 +3,10 @@ using System.Data;
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using MacroStudio.Presentation.Extensions;
 using MacroStudio.Domain.Interfaces;
+using MacroStudio.Infrastructure.Logging;
 using System.IO;
 using System.Text;
 
@@ -72,7 +74,22 @@ public partial class App : System.Windows.Application
 
     private static IHostBuilder CreateHostBuilder()
     {
+        var logDirectory = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "MacroStudio",
+            "Logs");
+        Directory.CreateDirectory(logDirectory);
+        var logFilePath = Path.Combine(logDirectory, "diagnostic.log");
+
         return Host.CreateDefaultBuilder()
+            .ConfigureLogging(logging =>
+            {
+                // Keep default providers (Console, Debug) and add file logger
+                // Console logger will show output in dotnet run console
+                // Debug logger will show in Visual Studio output window
+                // File logger will write to diagnostic.log file (only Warning and above)
+                logging.AddProvider(new FileLoggerProvider(logFilePath));
+            })
             .ConfigureServices((context, services) =>
             {
                 // Register all MacroStudio services
