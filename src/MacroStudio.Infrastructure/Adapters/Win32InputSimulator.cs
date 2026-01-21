@@ -153,6 +153,10 @@ public class Win32InputSimulator : IInputSimulator
         {
             lock (_lockObject)
             {
+                // 使用 scan code + KEYEVENTF_SCANCODE 來模擬實體鍵盤輸入，
+                // 某些遊戲對這種方式的支援會比僅使用虛擬鍵碼更好。
+                var (scanCode, flags) = GetScanCodeAndFlags((uint)key);
+
                 var input = new INPUT
                 {
                     type = INPUT_KEYBOARD,
@@ -160,9 +164,10 @@ public class Win32InputSimulator : IInputSimulator
                     {
                         ki = new KEYBDINPUT
                         {
-                            wVk = (ushort)key,
-                            wScan = 0,
-                            dwFlags = isDown ? 0 : KEYEVENTF_KEYUP,
+                            // 使用 scan code 模式時，wVk 一般設為 0，由 wScan + dwFlags 決定實際鍵。
+                            wVk = 0,
+                            wScan = scanCode,
+                            dwFlags = flags | (isDown ? 0 : KEYEVENTF_KEYUP),
                             time = 0,
                             dwExtraInfo = IntPtr.Zero
                         }
@@ -479,5 +484,43 @@ public class Win32InputSimulator : IInputSimulator
             _logger.LogDebug("Disposing Win32InputSimulator");
             _isDisposed = true;
         }
+    }
+
+    /// <summary>
+    /// 根據虛擬鍵取得對應的 scan code 與必要的旗標 (如 EXTENDEDKEY)，
+    /// 並加上 KEYEVENTF_SCANCODE 讓 SendInput 以掃描碼模式送出。
+    /// </summary>
+    private static (ushort scanCode, uint flags) GetScanCodeAndFlags(uint virtualKey)
+    {
+        // 使用目前鍵盤配置來做轉換
+        var layout = GetKeyboardLayout(0);
+        var scanCode = (ushort)MapVirtualKeyEx(virtualKey, MAPVK_VK_TO_VSC, layout);
+
+        uint flags = KEYEVENTF_SCANCODE;
+
+        // 某些鍵（例如方向鍵、Insert、Delete、Home、End、PageUp/Down 等）需要 EXTENDEDKEY
+        // 這裡用常見的 VK 值做簡單判斷；若未命中則只使用掃描碼。
+        switch (virtualKey)
+        {
+            // 箭頭鍵
+            case 0x25: // VK_LEFT
+            case 0x26: // VK_UP
+            case 0x27: // VK_RIGHT
+            case 0x28: // VK_DOWN
+            // 其他常見 extended 鍵
+            case 0x21: // VK_PRIOR (Page Up)
+            case 0x22: // VK_NEXT (Page Down)
+            case 0x23: // VK_END
+            case 0x24: // VK_HOME
+            case 0x2D: // VK_INSERT
+            case 0x2E: // VK_DELETE
+            case 0x6F: // VK_DIVIDE (小鍵盤 /)
+            case 0xA3: // VK_RCONTROL
+            case 0xA5: // VK_RMENU (右 Alt)
+                flags |= KEYEVENTF_EXTENDEDKEY;
+                break;
+        }
+
+        return (scanCode, flags);
     }
 }
