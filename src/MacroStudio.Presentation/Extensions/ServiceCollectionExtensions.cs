@@ -66,6 +66,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IRecordingService, RecordingService>();
         services.AddSingleton<ISafetyService, SafetyService>();
         services.AddScoped<IExecutionService, ExecutionService>();
+        services.AddScoped<LuaScriptRunner>();
         services.AddSingleton<ILoggingService, LoggingService>();
         
         return services;

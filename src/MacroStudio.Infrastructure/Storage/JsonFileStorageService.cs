@@ -307,6 +307,7 @@ public class JsonFileStorageService : IFileStorageService
             CreatedAt = script.CreatedAt,
             ModifiedAt = script.ModifiedAt,
             Commands = script.Commands.Select(ConvertToCommandDto).ToList(),
+            SourceText = script.SourceText,
             TriggerHotkey = script.TriggerHotkey != null ? new HotkeyDto
             {
                 Id = script.TriggerHotkey.Id,
@@ -433,7 +434,8 @@ public class JsonFileStorageService : IFileStorageService
             commands,
             dto.CreatedAt,
             dto.ModifiedAt,
-            triggerHotkey
+            triggerHotkey,
+            dto.SourceText
         );
     }
 
@@ -591,6 +593,7 @@ public class JsonFileStorageService : IFileStorageService
         public DateTime CreatedAt { get; set; }
         public DateTime ModifiedAt { get; set; }
         public List<CommandDto> Commands { get; set; } = new();
+        public string? SourceText { get; set; }
         public HotkeyDto? TriggerHotkey { get; set; }
     }
 

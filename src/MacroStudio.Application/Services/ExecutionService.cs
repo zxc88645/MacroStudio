@@ -15,6 +15,7 @@ public sealed class ExecutionService : IExecutionService, IDisposable
     private readonly IInputSimulator _inputSimulator;
     private readonly IGlobalHotkeyService _globalHotkeyService;
     private readonly ISafetyService _safetyService;
+    private readonly LuaScriptRunner _luaRunner;
     private readonly ILogger<ExecutionService> _logger;
     private readonly object _lockObject = new();
 
@@ -63,11 +64,12 @@ public sealed class ExecutionService : IExecutionService, IDisposable
         }
     }
 
-    public ExecutionService(IInputSimulator inputSimulator, IGlobalHotkeyService globalHotkeyService, ISafetyService safetyService, ILogger<ExecutionService> logger)
+    public ExecutionService(IInputSimulator inputSimulator, IGlobalHotkeyService globalHotkeyService, ISafetyService safetyService, LuaScriptRunner luaRunner, ILogger<ExecutionService> logger)
     {
         _inputSimulator = inputSimulator ?? throw new ArgumentNullException(nameof(inputSimulator));
         _globalHotkeyService = globalHotkeyService ?? throw new ArgumentNullException(nameof(globalHotkeyService));
         _safetyService = safetyService ?? throw new ArgumentNullException(nameof(safetyService));
+        _luaRunner = luaRunner ?? throw new ArgumentNullException(nameof(luaRunner));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -459,29 +461,37 @@ public sealed class ExecutionService : IExecutionService, IDisposable
                 await _inputSimulator.DelayAsync(session.Options.CountdownDuration);
             }
 
-            for (var i = context.CurrentCommandIndex; i < script.CommandCount; i++)
+            // Lua-only execution: run SourceText. For scripts created via recording,
+            // SourceText might be empty; we fall back to the old command list as a
+            // sequence of Lua function calls (which is valid Lua).
+            var source = script.SourceText;
+            if (string.IsNullOrWhiteSpace(source))
             {
-                ct.ThrowIfCancellationRequested();
-                context.PauseEvent.Wait(ct);
-
-                if (_safetyService.IsKillSwitchActive)
-                    throw new InvalidOperationException("Kill switch is active.");
-
-                // Safety: max execution time
-                if (DateTime.UtcNow - started > session.Options.MaxExecutionTime)
-                    throw new InvalidOperationException("Execution time limit exceeded.");
-
-                await ExecuteSingleCommandAsync(context, i, ct);
+                source = ScriptTextConverter.ToText(script);
             }
+
+            ct.ThrowIfCancellationRequested();
+            context.PauseEvent.Wait(ct);
+
+            if (_safetyService.IsKillSwitchActive)
+                throw new InvalidOperationException("Kill switch is active.");
+
+            // Safety: max execution time (coarse guard; Lua runner also enforces limits)
+            if (DateTime.UtcNow - started > session.Options.MaxExecutionTime)
+                throw new InvalidOperationException("Execution time limit exceeded.");
+
+            await _luaRunner.RunAsync(source, ct);
 
             lock (_lockObject)
             {
+                context.CurrentCommandIndex = script.CommandCount;
+                session.UpdateProgress(context.CurrentCommandIndex);
                 context.State = ExecutionState.Completed;
                 // 如果這是當前腳本，更新狀態
                 if (CurrentScript?.Id == script.Id)
                 {
                     State = ExecutionState.Completed;
-                    CurrentCommandIndex = script.CommandCount;
+                    CurrentCommandIndex = script.CommandCount; // best-effort for legacy UI
                 }
             }
 

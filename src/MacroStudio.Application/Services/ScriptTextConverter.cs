@@ -111,6 +111,11 @@ public static class ScriptTextConverter
                     var seconds = ParseSingleDoubleArg(codePart, "sleep");
                     commands.Add(new SleepCommand(TimeSpan.FromSeconds(seconds)));
                 }
+                else if (codePart.StartsWith("msleep", StringComparison.OrdinalIgnoreCase))
+                {
+                    var ms = ParseSingleDoubleArg(codePart, "msleep");
+                    commands.Add(new SleepCommand(TimeSpan.FromMilliseconds(ms)));
+                }
                 else if (codePart.StartsWith("move", StringComparison.OrdinalIgnoreCase))
                 {
                     var (x, y) = ParseTwoIntArgs(codePart, "move");

@@ -9,6 +9,7 @@ public class Script
 {
     private readonly List<Command> _commands;
     private string _name;
+    private string _sourceText = string.Empty;
 
     /// <summary>
     /// Unique identifier for this script.
@@ -40,6 +41,19 @@ public class Script
     /// Read-only collection of commands in this script.
     /// </summary>
     public IReadOnlyList<Command> Commands => _commands.AsReadOnly();
+
+    /// <summary>
+    /// Lua source code for this script. This is the primary representation for execution.
+    /// </summary>
+    public string SourceText
+    {
+        get => _sourceText;
+        set
+        {
+            _sourceText = value ?? string.Empty;
+            ModifiedAt = DateTime.UtcNow;
+        }
+    }
 
     /// <summary>
     /// Timestamp when this script was created.
@@ -90,6 +104,7 @@ public class Script
         _commands = new List<Command>();
         CreatedAt = DateTime.UtcNow;
         ModifiedAt = CreatedAt;
+        _sourceText = string.Empty;
     }
 
     /// <summary>
@@ -101,7 +116,7 @@ public class Script
     /// <param name="createdAt">The timestamp when this script was created.</param>
     /// <param name="modifiedAt">The timestamp when this script was last modified.</param>
     /// <param name="triggerHotkey">Optional hotkey that triggers this script execution.</param>
-    public Script(Guid id, string name, IEnumerable<Command> commands, DateTime createdAt, DateTime modifiedAt, HotkeyDefinition? triggerHotkey = null)
+    public Script(Guid id, string name, IEnumerable<Command> commands, DateTime createdAt, DateTime modifiedAt, HotkeyDefinition? triggerHotkey = null, string? sourceText = null)
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Script name cannot be null or empty.", nameof(name));
@@ -112,6 +127,7 @@ public class Script
         CreatedAt = createdAt;
         ModifiedAt = modifiedAt;
         TriggerHotkey = triggerHotkey;
+        _sourceText = sourceText ?? string.Empty;
     }
 
     /// <summary>
@@ -270,6 +286,7 @@ public class Script
         {
             duplicatedScript.AddCommand(command.Clone());
         }
+        duplicatedScript.SourceText = SourceText;
         return duplicatedScript;
     }
 
