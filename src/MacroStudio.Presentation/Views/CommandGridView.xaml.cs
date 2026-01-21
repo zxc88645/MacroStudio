@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using ICSharpCode.AvalonEdit;
+using MacroStudio.Presentation.ViewModels;
 
 namespace MacroStudio.Presentation.Views;
 
@@ -30,6 +31,31 @@ public partial class CommandGridView : UserControl
             ScriptEditor.Options.IndentationSize = 4;
             ScriptEditor.Options.ConvertTabsToSpaces = false;
             ScriptEditor.Options.AllowScrollBelowDocument = false;
+
+            // Keep VM caret/selection in sync so commands can insert at caret.
+            ScriptEditor.TextArea.Caret.PositionChanged -= OnCaretPositionChanged;
+            ScriptEditor.TextArea.Caret.PositionChanged += OnCaretPositionChanged;
+            ScriptEditor.TextArea.SelectionChanged -= OnSelectionChanged;
+            ScriptEditor.TextArea.SelectionChanged += OnSelectionChanged;
+
+            // Initial sync
+            SyncCaretAndSelection();
+        }
+    }
+
+    private void OnCaretPositionChanged(object? sender, EventArgs e) => SyncCaretAndSelection();
+
+    private void OnSelectionChanged(object? sender, EventArgs e) => SyncCaretAndSelection();
+
+    private void SyncCaretAndSelection()
+    {
+        if (ScriptEditor == null) return;
+
+        if (DataContext is MainViewModel mainVm && mainVm.CommandGrid != null)
+        {
+            mainVm.CommandGrid.CaretOffset = ScriptEditor.CaretOffset;
+            mainVm.CommandGrid.SelectionStart = ScriptEditor.SelectionStart;
+            mainVm.CommandGrid.SelectionLength = ScriptEditor.SelectionLength;
         }
     }
 

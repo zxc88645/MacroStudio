@@ -31,7 +31,7 @@ public static class MacroScriptSyntaxMode
     private static string GetXshdContent()
     {
         return @"<?xml version=""1.0""?>
-<SyntaxDefinition name=""MacroScript"" xmlns=""http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008"">
+<SyntaxDefinition name=""MacroLua"" xmlns=""http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008"">
   <Color name=""Function"" foreground=""#3b82f6"" />
   <Color name=""String"" foreground=""#22c55e"" />
   <Color name=""Number"" foreground=""#f59e0b"" />
@@ -39,25 +39,26 @@ public static class MacroScriptSyntaxMode
   <Color name=""Keyword"" foreground=""#a855f7"" />
   
   <RuleSet>
-    <!-- Comments - use Span to avoid zero-width match issues -->
-    <Span color=""Comment"" begin=""#"" end=""\n"" />
+    <!-- Comments -->
+    <Span color=""Comment"" begin=""--"" end=""\n"" />
     
-    <!-- Strings (single quotes) - must come after comments to avoid conflicts -->
+    <!-- Strings -->
     <Span color=""String"" begin=""'"" end=""'"" />
+    <Span color=""String"" begin='""' end='""' />
     
-    <!-- Functions -->
+    <!-- Host API functions -->
     <Rule color=""Function"">
-      \b(mouse_down|mouse_release|mouse_click|sleep|move|type_text|key_down|key_release)\b
+      \b(move|sleep|msleep|type_text|mouse_click|mouse_down|mouse_release|key_down|key_release)\b
+    </Rule>
+
+    <!-- Lua keywords -->
+    <Rule color=""Keyword"">
+      \b(and|break|do|else|elseif|end|false|for|function|if|in|local|nil|not|or|repeat|return|then|true|until|while)\b
     </Rule>
     
     <!-- Numbers -->
     <Rule color=""Number"">
       \b\d+\.?\d*\b
-    </Rule>
-    
-    <!-- Keywords (button names, etc.) -->
-    <Rule color=""Keyword"">
-      \b(left|right|middle)\b
     </Rule>
   </RuleSet>
 </SyntaxDefinition>";

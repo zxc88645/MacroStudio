@@ -25,6 +25,16 @@ public partial class CommandGridViewModel : ObservableObject
 
     public ObservableCollection<Command> Commands { get; } = new();
 
+    // Updated by the view (AvalonEdit) so we can insert snippets at the caret.
+    [ObservableProperty]
+    private int caretOffset;
+
+    [ObservableProperty]
+    private int selectionStart;
+
+    [ObservableProperty]
+    private int selectionLength;
+
     [ObservableProperty]
     private string scriptText = string.Empty;
 
@@ -74,7 +84,12 @@ public partial class CommandGridViewModel : ObservableObject
         foreach (var cmd in script.Commands)
             Commands.Add(cmd);
 
-        var text = ScriptTextConverter.ToText(script);
+        // Lua-only editor: SourceText is the primary representation.
+        // If empty (e.g. legacy/recorded script), fall back to a sequence of host API calls
+        // which is valid Lua as well.
+        var text = string.IsNullOrWhiteSpace(script.SourceText)
+            ? ScriptTextConverter.ToText(script)
+            : script.SourceText;
         _isUpdatingDocument = true;
         Document.Text = text;
         _originalScriptText = text;
@@ -97,32 +112,15 @@ public partial class CommandGridViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(HasScript))]
     private async Task AddSleepCommandAsync()
     {
-        if (CurrentScript == null) return;
-        if (!await TryApplyScriptTextInternalAsync()) return;
-
-        var dlg = new InputDialog(
-            "Add Sleep",
-            "輸入延遲秒數，例如：0.05 代表 50ms。",
-            "Seconds:",
-            "0.25");
-        dlg.Owner = System.Windows.Application.Current?.MainWindow;
-
-        if (dlg.ShowDialog() != true)
-            return;
-
-        if (!double.TryParse(dlg.ValueText, out var seconds) || seconds < 0)
-            return;
-
-        var delay = TimeSpan.FromSeconds(seconds);
-        CurrentScript.AddCommand(new SleepCommand(delay));
-        await PersistAndReloadAsync("Added sleep command");
+        // Quick insert: msleep(100) at caret (or replace selection).
+        // Persistence still happens via "Apply Script" like other text edits.
+        InsertSnippetAtCaret("msleep(100)");
     }
 
     [RelayCommand(CanExecute = nameof(HasScript))]
     private async Task AddKeyboardTextAsync()
     {
         if (CurrentScript == null) return;
-        if (!await TryApplyScriptTextInternalAsync()) return;
 
         var dlg = new InputDialog(
             "Add Keyboard Text",
@@ -147,26 +145,13 @@ public partial class CommandGridViewModel : ObservableObject
             return;
         }
 
-        var command = new KeyboardCommand(text);
-        if (!command.IsValid())
-        {
-            await _loggingService.LogWarningAsync("Invalid keyboard command created", new Dictionary<string, object>
-            {
-                { "ScriptId", CurrentScript.Id },
-                { "ScriptName", CurrentScript.Name }
-            });
-            return;
-        }
-
-        CurrentScript.AddCommand(command);
-        await PersistAndReloadAsync("Added keyboard text command");
+        InsertSnippetAtCaret($"type_text('{EscapeSingleQuotes(text)}')");
     }
 
     [RelayCommand(CanExecute = nameof(HasScript))]
     private async Task AddMouseMoveAsync()
     {
         if (CurrentScript == null) return;
-        if (!await TryApplyScriptTextInternalAsync()) return;
 
         var picker = new PickPointWindow
         {
@@ -178,8 +163,7 @@ public partial class CommandGridViewModel : ObservableObject
             return;
 
         var position = await _inputSimulator.GetCursorPositionAsync();
-        CurrentScript.AddCommand(new MouseMoveCommand(position));
-        await PersistAndReloadAsync("Added mouse move command");
+        InsertSnippetAtCaret($"move({position.X}, {position.Y})");
     }
 
     [RelayCommand(CanExecute = nameof(HasScript))]
@@ -195,10 +179,7 @@ public partial class CommandGridViewModel : ObservableObject
     private async Task RemoveLastCommandAsync()
     {
         if (CurrentScript == null) return;
-        if (!await TryApplyScriptTextInternalAsync()) return;
-        if (CurrentScript.CommandCount == 0) return;
-        CurrentScript.RemoveCommandAt(CurrentScript.CommandCount - 1);
-        await PersistAndReloadAsync("Removed last command");
+        RemoveLastNonEmptyLine();
     }
 
     [RelayCommand(CanExecute = nameof(CanApplyScript))]
@@ -208,18 +189,10 @@ public partial class CommandGridViewModel : ObservableObject
 
         try
         {
-            var text = Document.Text;
-            var commands = ScriptTextConverter.Parse(text);
-
-            CurrentScript.ClearCommands();
-            foreach (var cmd in commands)
-            {
-                CurrentScript.AddCommand(cmd);
-            }
-
-            await PersistAndReloadAsync("Updated script from text");
+            CurrentScript.SourceText = Document.Text ?? string.Empty;
+            await PersistAndReloadAsync("Updated script source");
         }
-        catch (FormatException ex)
+        catch (Exception ex)
         {
             await _loggingService.LogErrorAsync("Failed to parse script text", ex, new Dictionary<string, object>
             {
@@ -239,18 +212,11 @@ public partial class CommandGridViewModel : ObservableObject
 
         try
         {
-            var text = Document.Text;
-            var commands = ScriptTextConverter.Parse(text);
-            CurrentScript.ClearCommands();
-            foreach (var cmd in commands)
-            {
-                CurrentScript.AddCommand(cmd);
-            }
-
+            CurrentScript.SourceText = Document.Text ?? string.Empty;
             await _scriptManager.UpdateScriptAsync(CurrentScript);
             return true;
         }
-        catch (FormatException ex)
+        catch (Exception ex)
         {
             await _loggingService.LogErrorAsync("Failed to parse script text before modifying commands", ex, new Dictionary<string, object>
             {
@@ -311,16 +277,63 @@ public partial class CommandGridViewModel : ObservableObject
     private async Task AddClickSequenceAsync(MouseButton button)
     {
         if (CurrentScript == null) return;
-        if (!await TryApplyScriptTextInternalAsync()) return;
+        InsertSnippetAtCaret($"mouse_click('{button.ToString().ToLowerInvariant()}')");
+    }
 
-        // Click will be performed at current cursor position when executed.
-        var down = new MouseClickCommand(button, ClickType.Down);
-        var sleep = new SleepCommand(TimeSpan.FromMilliseconds(50));
-        var up = new MouseClickCommand(button, ClickType.Up);
-        CurrentScript.AddCommand(down);
-        CurrentScript.AddCommand(sleep);
-        CurrentScript.AddCommand(up);
-        await PersistAndReloadAsync($"Added {button} click sequence");
+    private void InsertSnippetAtCaret(string snippet)
+    {
+        // Ensure this is a standalone line.
+        var insertion = snippet + Environment.NewLine;
+
+        var doc = Document;
+        var docLen = doc.TextLength;
+        var caret = Math.Clamp(CaretOffset, 0, docLen);
+
+        // If inserting mid-line, start on a new line first.
+        if (caret > 0)
+        {
+            var prev = doc.GetCharAt(caret - 1);
+            if (prev != '\n' && prev != '\r')
+            {
+                insertion = Environment.NewLine + insertion;
+            }
+        }
+
+        if (SelectionLength > 0)
+        {
+            var start = Math.Clamp(SelectionStart, 0, docLen);
+            var len = Math.Clamp(SelectionLength, 0, docLen - start);
+            doc.Replace(start, len, insertion);
+            CaretOffset = start + insertion.Length;
+        }
+        else
+        {
+            doc.Insert(caret, insertion);
+            CaretOffset = caret + insertion.Length;
+        }
+    }
+
+    private static string EscapeSingleQuotes(string text) => text.Replace("'", "\\'");
+
+    private void RemoveLastNonEmptyLine()
+    {
+        var text = Document.Text ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(text))
+            return;
+
+        var lines = text.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None).ToList();
+        for (var i = lines.Count - 1; i >= 0; i--)
+        {
+            if (!string.IsNullOrWhiteSpace(lines[i]))
+            {
+                lines.RemoveAt(i);
+                break;
+            }
+        }
+
+        _isUpdatingDocument = true;
+        Document.Text = string.Join(Environment.NewLine, lines);
+        _isUpdatingDocument = false;
     }
 }
 
