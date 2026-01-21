@@ -21,6 +21,7 @@ public class RecordingService : IRecordingService
     private RecordingSession? _currentSession;
     private DateTime _lastEventTime;
     private Point _lastMousePosition;
+    private bool _isFirstEventInSegment = true;
     private bool _hooksSubscribed;
     private HotkeyDefinition? _ignoreStart;
     private HotkeyDefinition? _ignorePause;
@@ -124,6 +125,8 @@ public class RecordingService : IRecordingService
             {
                 _currentSession = session;
                 _lastEventTime = DateTime.UtcNow;
+                _lastMousePosition = Point.Zero;
+                _isFirstEventInSegment = true;
             }
 
             // Install Win32 hooks for mouse and keyboard events
@@ -250,7 +253,10 @@ public class RecordingService : IRecordingService
             var now = DateTime.UtcNow;
             var delay = now - _lastEventTime;
 
-            if (delay < session.Options.MinimumDelay)
+            if (_isFirstEventInSegment)
+                delay = TimeSpan.Zero;
+
+            if (!_isFirstEventInSegment && delay < session.Options.MinimumDelay)
                 delay = session.Options.MinimumDelay;
 
             if (delay > session.Options.MaximumDelay)
@@ -263,6 +269,7 @@ public class RecordingService : IRecordingService
 
             session.AddCommand(command);
             _lastEventTime = now;
+            _isFirstEventInSegment = false;
 
             RaiseCommandRecorded(command, session.Id);
         }
@@ -334,6 +341,7 @@ public class RecordingService : IRecordingService
 
             session.ChangeState(RecordingState.Active);
             _lastEventTime = DateTime.UtcNow;
+            _isFirstEventInSegment = true;
 
             // Raise state changed event
             RaiseStateChanged(previousState, RecordingState.Active, session.Id, "Recording resumed");
@@ -495,7 +503,10 @@ public class RecordingService : IRecordingService
             var delay = now - _lastEventTime;
 
             // Apply minimum delay filter
-            if (delay < session.Options.MinimumDelay)
+            if (_isFirstEventInSegment)
+                delay = TimeSpan.Zero;
+
+            if (!_isFirstEventInSegment && delay < session.Options.MinimumDelay)
             {
                 return; // Skip this event
             }
@@ -520,6 +531,7 @@ public class RecordingService : IRecordingService
             session.AddCommand(command);
             _lastEventTime = now;
             _lastMousePosition = position;
+            _isFirstEventInSegment = false;
 
             RaiseCommandRecorded(command, session.Id);
         }
@@ -560,7 +572,10 @@ public class RecordingService : IRecordingService
             var delay = now - _lastEventTime;
 
             // Apply minimum delay filter
-            if (delay < session.Options.MinimumDelay)
+            if (_isFirstEventInSegment)
+                delay = TimeSpan.Zero;
+
+            if (!_isFirstEventInSegment && delay < session.Options.MinimumDelay)
             {
                 delay = session.Options.MinimumDelay;
             }
@@ -579,6 +594,7 @@ public class RecordingService : IRecordingService
             session.AddCommand(command);
             _lastEventTime = now;
             _lastMousePosition = position;
+            _isFirstEventInSegment = false;
 
             RaiseCommandRecorded(command, session.Id);
         }
@@ -618,7 +634,10 @@ public class RecordingService : IRecordingService
             var delay = now - _lastEventTime;
 
             // Apply minimum delay filter
-            if (delay < session.Options.MinimumDelay)
+            if (_isFirstEventInSegment)
+                delay = TimeSpan.Zero;
+
+            if (!_isFirstEventInSegment && delay < session.Options.MinimumDelay)
             {
                 delay = session.Options.MinimumDelay;
             }
@@ -651,6 +670,7 @@ public class RecordingService : IRecordingService
 
             session.AddCommand(command);
             _lastEventTime = now;
+            _isFirstEventInSegment = false;
 
             RaiseCommandRecorded(command, session.Id);
         }

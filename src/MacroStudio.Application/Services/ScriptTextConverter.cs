@@ -21,6 +21,11 @@ public static class ScriptTextConverter
 
         foreach (var command in script.Commands)
         {
+            // Preserve timing: Command.Delay is the time gap since the previous command.
+            // In Lua/text form we represent that gap explicitly via msleep(...) so
+            // recorded scripts keep realistic pacing when executed by LuaScriptRunner.
+            AppendDelayIfAny(sb, command.Delay);
+
             switch (command)
             {
                 case MouseMoveCommand move:
@@ -40,8 +45,7 @@ public static class ScriptTextConverter
                     break;
 
                 case SleepCommand sleep:
-                    var seconds = sleep.Duration.TotalSeconds;
-                    sb.AppendLine($"sleep({seconds.ToString("0.###", CultureInfo.InvariantCulture)})");
+                    AppendMsleepIfAny(sb, sleep.Duration);
                     break;
 
                 case KeyboardCommand keyboard when !string.IsNullOrEmpty(keyboard.Text):
@@ -65,6 +69,25 @@ public static class ScriptTextConverter
         }
 
         return sb.ToString();
+    }
+
+    private static void AppendDelayIfAny(StringBuilder sb, TimeSpan delay)
+    {
+        AppendMsleepIfAny(sb, delay);
+    }
+
+    private static void AppendMsleepIfAny(StringBuilder sb, TimeSpan duration)
+    {
+        if (duration <= TimeSpan.Zero)
+            return;
+
+        // As requested: always emit msleep with integer milliseconds.
+        // Round to nearest millisecond to avoid systematic bias.
+        var ms = (long)Math.Round(duration.TotalMilliseconds, MidpointRounding.AwayFromZero);
+        if (ms <= 0)
+            return;
+
+        sb.AppendLine($"msleep({ms.ToString(CultureInfo.InvariantCulture)})");
     }
 
     /// <summary>
