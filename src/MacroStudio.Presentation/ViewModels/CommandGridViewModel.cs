@@ -291,7 +291,11 @@ public partial class CommandGridViewModel : ObservableObject
     private async Task AddClickSequenceAsync(MouseButton button)
     {
         if (CurrentScript == null) return;
-        InsertSnippetAtCaret($"mouse_click('{button.ToString().ToLowerInvariant()}')");
+        var b = button.ToString().ToLowerInvariant();
+        InsertSnippetAtCaret(
+            $"mouse_down('{b}'){Environment.NewLine}" +
+            $"msleep(50){Environment.NewLine}" +
+            $"mouse_release('{b}')");
     }
 
     private void InsertSnippetAtCaret(string snippet)
