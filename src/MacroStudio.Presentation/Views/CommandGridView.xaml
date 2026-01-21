@@ -12,7 +12,7 @@
     </UserControl.Resources>
     <Border Style="{DynamicResource CardBorder}" Padding="14">
         <DockPanel LastChildFill="True">
-            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8" IsEnabled="{Binding CommandGrid.IsEditorEnabled}">
                 <TextBlock FontWeight="SemiBold" Text="{DynamicResource Ui.Editor.Title}" />
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                     <TextBlock Margin="0,0,10,0"
@@ -55,21 +55,50 @@
                 </StackPanel>
             </DockPanel>
 
-            <avalon:TextEditor x:Name="ScriptEditor"
-                              Document="{Binding CommandGrid.Document}"
-                              SyntaxHighlighting="{Binding CommandGrid.SyntaxHighlighting}"
-                              FontFamily="Consolas"
-                              FontSize="13"
-                              ShowLineNumbers="True"
-                              LineNumbersForeground="{DynamicResource TextMutedBrush}"
-                              Background="{DynamicResource Bg1}"
-                              Foreground="{DynamicResource TextBrush}"
-                              BorderBrush="{DynamicResource BorderBrushSoft}"
-                              BorderThickness="1"
-                              Padding="8"
-                              VerticalScrollBarVisibility="Auto"
-                              HorizontalScrollBarVisibility="Auto"
-                              WordWrap="False" />
+            <Grid>
+                <avalon:TextEditor x:Name="ScriptEditor"
+                                  Document="{Binding CommandGrid.Document}"
+                                  IsEnabled="{Binding CommandGrid.IsEditorEnabled}"
+                                  SyntaxHighlighting="{Binding CommandGrid.SyntaxHighlighting}"
+                                  FontFamily="Consolas"
+                                  FontSize="13"
+                                  ShowLineNumbers="True"
+                                  LineNumbersForeground="{DynamicResource TextMutedBrush}"
+                                  Background="{DynamicResource Bg1}"
+                                  Foreground="{DynamicResource TextBrush}"
+                                  BorderBrush="{DynamicResource BorderBrushSoft}"
+                                  BorderThickness="1"
+                                  Padding="8"
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Auto"
+                                  WordWrap="False" />
+
+                <!-- Empty-state hint when no script is selected -->
+                <Border BorderBrush="{DynamicResource BorderBrushSoft}"
+                        BorderThickness="1"
+                        Background="{DynamicResource Bg1}"
+                        IsHitTestVisible="False">
+                    <Border.Style>
+                        <Style TargetType="{x:Type Border}">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CommandGrid.IsEditorEnabled}" Value="False">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+
+                    <TextBlock Text="{DynamicResource Ui.Editor.SelectScriptHint}"
+                               Foreground="{DynamicResource TextMutedBrush}"
+                               TextAlignment="Center"
+                               VerticalAlignment="Center"
+                               HorizontalAlignment="Center"
+                               TextWrapping="Wrap"
+                               Margin="24"
+                               MaxWidth="520"/>
+                </Border>
+            </Grid>
         </DockPanel>
     </Border>
 </UserControl>

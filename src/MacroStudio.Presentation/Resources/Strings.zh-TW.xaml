@@ -80,6 +80,7 @@
   <sys:String x:Key="Ui.Editor.Mouse.LeftClick">左鍵點擊</sys:String>
   <sys:String x:Key="Ui.Editor.Mouse.RightClick">右鍵點擊</sys:String>
   <sys:String x:Key="Ui.Editor.Mouse.MiddleClick">中鍵點擊</sys:String>
+  <sys:String x:Key="Ui.Editor.SelectScriptHint">請先從左側選擇一個腳本，才能開始編輯。</sys:String>
 
   <!-- Common dialogs -->
   <sys:String x:Key="Ui.Dialog.Cancel">取消</sys:String>

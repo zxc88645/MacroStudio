@@ -48,6 +48,11 @@ public partial class CommandGridViewModel : ObservableObject
     [ObservableProperty]
     private Script? currentScript;
 
+    /// <summary>
+    /// True when a script is selected and the editor should be interactive.
+    /// </summary>
+    public bool IsEditorEnabled => CurrentScript != null;
+
     [ObservableProperty]
     private bool hasUnsavedChanges;
 
@@ -279,6 +284,7 @@ public partial class CommandGridViewModel : ObservableObject
 
     partial void OnCurrentScriptChanged(Script? oldValue, Script? newValue)
     {
+        OnPropertyChanged(nameof(IsEditorEnabled));
         AddSleepCommandCommand.NotifyCanExecuteChanged();
         RemoveLastCommandCommand.NotifyCanExecuteChanged();
         AddKeyboardTextCommand.NotifyCanExecuteChanged();

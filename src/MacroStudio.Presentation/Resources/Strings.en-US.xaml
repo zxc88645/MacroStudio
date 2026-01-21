@@ -80,6 +80,7 @@
   <sys:String x:Key="Ui.Editor.Mouse.LeftClick">Left click</sys:String>
   <sys:String x:Key="Ui.Editor.Mouse.RightClick">Right click</sys:String>
   <sys:String x:Key="Ui.Editor.Mouse.MiddleClick">Middle click</sys:String>
+  <sys:String x:Key="Ui.Editor.SelectScriptHint">Select a script from the left to start editing.</sys:String>
 
   <!-- Common dialogs -->
   <sys:String x:Key="Ui.Dialog.Cancel">Cancel</sys:String>
