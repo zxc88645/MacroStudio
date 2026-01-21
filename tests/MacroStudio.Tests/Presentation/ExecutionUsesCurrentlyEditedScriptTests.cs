@@ -134,12 +134,14 @@ public class ExecutionUsesCurrentlyEditedScriptTests
         public int CurrentCommandIndex { get; private set; }
         public ExecutionSession? CurrentSession { get; private set; }
 
+#pragma warning disable CS0067 // The interface requires these events; tests don't need to raise all of them.
         public event EventHandler<ExecutionProgressEventArgs>? ProgressChanged;
         public event EventHandler<ExecutionStateChangedEventArgs>? StateChanged;
         public event EventHandler<CommandExecutingEventArgs>? CommandExecuting;
         public event EventHandler<CommandExecutedEventArgs>? CommandExecuted;
         public event EventHandler<ExecutionErrorEventArgs>? ExecutionError;
         public event EventHandler<ExecutionCompletedEventArgs>? ExecutionCompleted;
+#pragma warning restore CS0067
 
         public Script? LastStartedScript { get; private set; }
         public ExecutionOptions? LastStartedOptions { get; private set; }
