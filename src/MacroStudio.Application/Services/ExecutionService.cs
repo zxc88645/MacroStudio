@@ -149,7 +149,7 @@ public sealed class ExecutionService : IExecutionService, IDisposable
         lock (_lockObject)
         {
             _activeExecutions[script.Id] = context;
-            
+
             // 向後兼容：更新"當前"腳本為最後啟動的腳本
             _cts = context.CancellationTokenSource;
             _pauseEvent.Set(); // 保持向後兼容
@@ -164,7 +164,7 @@ public sealed class ExecutionService : IExecutionService, IDisposable
 
         // 啟動執行任務
         context.ExecutionTask = Task.Run(async () => await ExecutionLoopAsync(context), context.CancellationTokenSource.Token);
-        
+
         // 向後兼容：更新單一執行任務
         lock (_lockObject)
         {
@@ -197,12 +197,12 @@ public sealed class ExecutionService : IExecutionService, IDisposable
         var prev = context.State;
         context.State = ExecutionState.Paused;
         context.Session.ChangeState(ExecutionState.Paused);
-        
+
         lock (_lockObject)
         {
             State = ExecutionState.Paused;
         }
-        
+
         RaiseStateChanged(prev, ExecutionState.Paused, context.Session.Id, "Paused");
         return Task.CompletedTask;
     }
@@ -232,12 +232,12 @@ public sealed class ExecutionService : IExecutionService, IDisposable
         var prev = context.State;
         context.State = ExecutionState.Running;
         context.Session.ChangeState(ExecutionState.Running);
-        
+
         lock (_lockObject)
         {
             State = ExecutionState.Running;
         }
-        
+
         RaiseStateChanged(prev, ExecutionState.Running, context.Session.Id, "Resumed");
         return Task.CompletedTask;
     }
@@ -266,13 +266,13 @@ public sealed class ExecutionService : IExecutionService, IDisposable
         var prev = context.State;
         context.State = ExecutionState.Stopped;
         context.Session.ChangeState(ExecutionState.Stopped);
-        
+
         lock (_lockObject)
         {
             State = ExecutionState.Stopped;
             CurrentCommandIndex = 0;
         }
-        
+
         RaiseStateChanged(prev, ExecutionState.Stopped, context.Session.Id, "Stopped");
         return Task.CompletedTask;
     }
@@ -307,12 +307,12 @@ public sealed class ExecutionService : IExecutionService, IDisposable
         var prev = context.State;
         context.State = ExecutionState.Stepping;
         context.Session.ChangeState(ExecutionState.Stepping);
-        
+
         lock (_lockObject)
         {
             State = ExecutionState.Stepping;
         }
-        
+
         RaiseStateChanged(prev, ExecutionState.Stepping, context.Session.Id, "Step");
 
         throw new NotSupportedException("Step execution is not supported. Scripts are executed as a single unit.");
@@ -335,7 +335,7 @@ public sealed class ExecutionService : IExecutionService, IDisposable
             {
                 context.CancellationTokenSource.Cancel();
                 context.PauseEvent.Set();
-                
+
                 var prev = context.State;
                 context.State = ExecutionState.Terminated;
                 context.Session.ChangeState(ExecutionState.Terminated);
@@ -511,12 +511,12 @@ public sealed class ExecutionService : IExecutionService, IDisposable
             lock (_lockObject)
             {
                 _activeExecutions.Remove(script.Id);
-                
+
                 // 如果這是當前腳本，且狀態是終止或失敗，清理當前狀態
                 // 但如果是 Completed，保留狀態以便查詢統計信息
                 if (CurrentScript?.Id == script.Id)
                 {
-                    if (context.State == ExecutionState.Terminated || 
+                    if (context.State == ExecutionState.Terminated ||
                         context.State == ExecutionState.Failed ||
                         context.State == ExecutionState.Stopped)
                     {

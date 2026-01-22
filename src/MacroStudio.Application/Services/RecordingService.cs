@@ -18,7 +18,7 @@ public class RecordingService : IRecordingService
     private readonly IInputSimulator _inputSimulator;
     private readonly ILogger<RecordingService> _logger;
     private readonly object _stateLock = new();
-    
+
     private RecordingSession? _currentSession;
     private DateTime _lastEventTime;
     private Point _lastMousePosition;
@@ -43,7 +43,7 @@ public class RecordingService : IRecordingService
         _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
         _inputSimulator = inputSimulator ?? throw new ArgumentNullException(nameof(inputSimulator));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        
+
         _logger.LogDebug("RecordingService initialized");
     }
 
@@ -123,7 +123,7 @@ public class RecordingService : IRecordingService
 
             // Create new recording session
             var session = new RecordingSession(recordingOptions);
-            
+
             // If using relative mouse movement, get current cursor position to initialize
             Point initialMousePosition = Point.Zero;
             if (recordingOptions.UseRelativeMouseMove && recordingOptions.RecordMouseMovements)
@@ -139,7 +139,7 @@ public class RecordingService : IRecordingService
                     initialMousePosition = Point.Zero;
                 }
             }
-            
+
             lock (_stateLock)
             {
                 _currentSession = session;
@@ -207,7 +207,7 @@ public class RecordingService : IRecordingService
             // Raise state changed event
             RaiseStateChanged(previousState, RecordingState.Stopped, session.Id, "Recording stopped");
 
-            _logger.LogInformation("Recording session {SessionId} stopped. Recorded {CommandCount} commands.", 
+            _logger.LogInformation("Recording session {SessionId} stopped. Recorded {CommandCount} commands.",
                 session.Id, session.Commands.Count);
 
             await Task.CompletedTask;
@@ -472,7 +472,7 @@ public class RecordingService : IRecordingService
         var stats = new RecordingStatistics
         {
             TotalCommands = commands.Count,
-            MouseMoveCommands = commands.Count(c => c is MouseMoveCommand || c is MouseMoveLowLevelCommand 
+            MouseMoveCommands = commands.Count(c => c is MouseMoveCommand || c is MouseMoveLowLevelCommand
                 || c is MouseMoveRelativeCommand || c is MouseMoveRelativeLowLevelCommand),
             MouseClickCommands = commands.Count(c => c is MouseClickCommand),
             KeyboardCommands = commands.Count(c => c is KeyboardCommand),
@@ -549,7 +549,7 @@ public class RecordingService : IRecordingService
                 // Calculate relative displacement
                 var deltaX = position.X - _lastMousePosition.X;
                 var deltaY = position.Y - _lastMousePosition.Y;
-                
+
                 command = session.Options.UseLowLevelMouseMove
                     ? new MouseMoveRelativeLowLevelCommand(deltaX, deltaY)
                     : new MouseMoveRelativeCommand(deltaX, deltaY);

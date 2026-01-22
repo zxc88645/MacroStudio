@@ -30,7 +30,7 @@ public class ScriptManager : IScriptManager
         _scriptHotkeyHookService = scriptHotkeyHookService ?? throw new ArgumentNullException(nameof(scriptHotkeyHookService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _scriptCache = new Dictionary<Guid, Script>();
-        
+
         _logger.LogDebug("ScriptManager initialized");
     }
 
@@ -179,7 +179,7 @@ public class ScriptManager : IScriptManager
                                     oldHotkey.Modifiers != script.TriggerHotkey.Modifiers ||
                                     oldHotkey.Key != script.TriggerHotkey.Key ||
                                     oldHotkey.TriggerMode != script.TriggerHotkey.TriggerMode;
-                    
+
                     if (hotkeyChanged)
                     {
                         oldHotkeyToUnregister = oldHotkey;
@@ -345,7 +345,7 @@ public class ScriptManager : IScriptManager
                 _scriptCache[duplicatedScript.Id] = duplicatedScript;
             }
 
-            _logger.LogInformation("Duplicated script {SourceId} to {NewId} with name: {NewName}", 
+            _logger.LogInformation("Duplicated script {SourceId} to {NewId} with name: {NewName}",
                 id, duplicatedScript.Id, newName);
 
             return duplicatedScript;
@@ -406,7 +406,7 @@ public class ScriptManager : IScriptManager
             var allScripts = await GetAllScriptsAsync();
             var trimmedName = name.Trim();
 
-            return !allScripts.Any(s => 
+            return !allScripts.Any(s =>
                 s.Name.Equals(trimmedName, StringComparison.OrdinalIgnoreCase) &&
                 (!excludeId.HasValue || s.Id != excludeId.Value));
         }
@@ -486,7 +486,7 @@ public class ScriptManager : IScriptManager
                 .ToList();
 
             _logger.LogDebug("Found {Count} scripts matching search term: {SearchTerm}", matchingScripts.Count, searchTerm);
-            
+
             return matchingScripts;
         }
         catch (Exception ex)
