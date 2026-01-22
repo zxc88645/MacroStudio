@@ -15,6 +15,8 @@ public sealed class CommandDisplayConverter : IValueConverter
         {
             MouseMoveCommand mm => $"Move to ({mm.Position.X}, {mm.Position.Y})",
             MouseMoveLowLevelCommand mmll => $"Move (LL) to ({mmll.Position.X}, {mmll.Position.Y})",
+            MouseMoveRelativeCommand mmr => $"Move relative ({mmr.DeltaX}, {mmr.DeltaY})",
+            MouseMoveRelativeLowLevelCommand mmrll => $"Move relative (LL) ({mmrll.DeltaX}, {mmrll.DeltaY})",
             MouseClickCommand mc => $"{mc.Type} {mc.Button}",
             KeyPressCommand kp => $"{(kp.IsDown ? "KeyDown" : "KeyUp")} {kp.Key}",
             KeyboardCommand kc when !string.IsNullOrEmpty(kc.Text) => $"Type \"{kc.Text}\"",

@@ -48,7 +48,7 @@ public static class MacroScriptSyntaxMode
     
     <!-- Host API functions -->
     <Rule color=""Function"">
-      \b(move|sleep|msleep|type_text|mouse_click|mouse_down|mouse_release|key_down|key_release)\b
+      \b(move|move_ll|move_rel|move_rel_ll|sleep|msleep|type_text|mouse_click|mouse_down|mouse_release|key_down|key_release)\b
     </Rule>
 
     <!-- Lua keywords -->

@@ -35,6 +35,7 @@
                     <StackPanel>
                         <CheckBox Content="{DynamicResource Ui.Recording.RecordMouseMovements}" IsChecked="{Binding Recording.RecordMouseMovements}" />
                         <CheckBox Content="{DynamicResource Ui.Recording.UseLowLevelMouseMove}" IsChecked="{Binding Recording.UseLowLevelMouseMove}" />
+                        <CheckBox Content="{DynamicResource Ui.Recording.UseRelativeMouseMove}" IsChecked="{Binding Recording.UseRelativeMouseMove}" />
                         <CheckBox Content="{DynamicResource Ui.Recording.RecordMouseClicks}" IsChecked="{Binding Recording.RecordMouseClicks}" />
                         <CheckBox Content="{DynamicResource Ui.Recording.RecordKeyboardInput}" IsChecked="{Binding Recording.RecordKeyboardInput}" />
                         <CheckBox Content="{DynamicResource Ui.Recording.FilterInjectedSystemEvents}" IsChecked="{Binding Recording.FilterSystemEvents}" />

@@ -48,6 +48,7 @@
   <sys:String x:Key="Ui.Recording.Options">選項</sys:String>
   <sys:String x:Key="Ui.Recording.RecordMouseMovements">記錄滑鼠移動</sys:String>
   <sys:String x:Key="Ui.Recording.UseLowLevelMouseMove">使用低階滑鼠移動</sys:String>
+  <sys:String x:Key="Ui.Recording.UseRelativeMouseMove">使用相對移動</sys:String>
   <sys:String x:Key="Ui.Recording.RecordMouseClicks">記錄滑鼠點擊</sys:String>
   <sys:String x:Key="Ui.Recording.RecordKeyboardInput">記錄鍵盤輸入</sys:String>
   <sys:String x:Key="Ui.Recording.FilterInjectedSystemEvents">過濾注入/系統事件</sys:String>

@@ -37,6 +37,9 @@ public partial class RecordingViewModel : ObservableObject
     private bool useLowLevelMouseMove = true;
 
     [ObservableProperty]
+    private bool useRelativeMouseMove = false;
+
+    [ObservableProperty]
     private bool recordMouseClicks = true;
 
     [ObservableProperty]
@@ -103,12 +106,8 @@ public partial class RecordingViewModel : ObservableObject
             if (RecordedCommands.Count == 0)
                 return;
 
-            // Convert recorded commands to Lua/text and insert at current editor caret.
-            var temp = new Script("RecordedTemp");
-            foreach (var cmd in RecordedCommands)
-                temp.AddCommand(cmd.Clone());
-
-            var text = ScriptTextConverter.ToText(temp);
+            // Convert recorded commands directly to Lua/text and insert at current editor caret.
+            var text = ScriptTextConverter.CommandsToText(RecordedCommands);
             _commandGridViewModel.InsertTextAtCaret(text, ensureStandaloneLine: true);
         }
         catch (Exception ex)
@@ -158,7 +157,8 @@ public partial class RecordingViewModel : ObservableObject
                 RecordMouseClicks = RecordMouseClicks,
                 RecordKeyboardInput = RecordKeyboardInput,
                 FilterSystemEvents = FilterSystemEvents,
-                UseLowLevelMouseMove = UseLowLevelMouseMove
+                UseLowLevelMouseMove = UseLowLevelMouseMove,
+                UseRelativeMouseMove = UseRelativeMouseMove
             };
 
             await _recordingService.StartRecordingAsync(options);
@@ -305,11 +305,8 @@ public partial class RecordingViewModel : ObservableObject
         }
 
         var script = await _scriptManager.CreateScriptAsync(name);
-        foreach (var cmd in RecordedCommands)
-            script.AddCommand(cmd.Clone());
-
-        // Persist a Lua/text representation too, so recorded scripts keep real timing (msleep calls).
-        script.SourceText = ScriptTextConverter.ToText(script);
+        
+        script.SourceText = ScriptTextConverter.CommandsToText(RecordedCommands);
 
         await _scriptManager.UpdateScriptAsync(script);
 
@@ -320,7 +317,8 @@ public partial class RecordingViewModel : ObservableObject
         {
             { "ScriptId", script.Id },
             { "ScriptName", script.Name },
-            { "CommandCount", script.CommandCount }
+            { "CommandCount", RecordedCommands.Count },
+            { "SourceTextLength", script.SourceTextLength }
         });
 
         SaveAsScriptCommand.NotifyCanExecuteChanged();

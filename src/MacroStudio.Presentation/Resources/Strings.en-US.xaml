@@ -48,6 +48,7 @@
   <sys:String x:Key="Ui.Recording.Options">Options</sys:String>
   <sys:String x:Key="Ui.Recording.RecordMouseMovements">Record mouse movements</sys:String>
   <sys:String x:Key="Ui.Recording.UseLowLevelMouseMove">Use low-level mouse move</sys:String>
+  <sys:String x:Key="Ui.Recording.UseRelativeMouseMove">Use relative movement</sys:String>
   <sys:String x:Key="Ui.Recording.RecordMouseClicks">Record mouse clicks</sys:String>
   <sys:String x:Key="Ui.Recording.RecordKeyboardInput">Record keyboard input</sys:String>
   <sys:String x:Key="Ui.Recording.FilterInjectedSystemEvents">Filter injected/system events</sys:String>
