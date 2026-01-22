@@ -15,6 +15,7 @@ public class RecordingService : IRecordingService
     private readonly IGlobalHotkeyService _hotkeyService;
     private readonly IInputHookService _inputHookService;
     private readonly ISettingsService _settingsService;
+    private readonly IInputSimulator _inputSimulator;
     private readonly ILogger<RecordingService> _logger;
     private readonly object _stateLock = new();
     
@@ -33,12 +34,14 @@ public class RecordingService : IRecordingService
     /// <param name="hotkeyService">Global hotkey service for recording control.</param>
     /// <param name="inputHookService">Global input hook service for capturing mouse and keyboard events.</param>
     /// <param name="settingsService">Settings service for reading recording hotkey configuration (to avoid recording control keys).</param>
+    /// <param name="inputSimulator">Input simulator for getting current cursor position.</param>
     /// <param name="logger">Logger for diagnostic information.</param>
-    public RecordingService(IGlobalHotkeyService hotkeyService, IInputHookService inputHookService, ISettingsService settingsService, ILogger<RecordingService> logger)
+    public RecordingService(IGlobalHotkeyService hotkeyService, IInputHookService inputHookService, ISettingsService settingsService, IInputSimulator inputSimulator, ILogger<RecordingService> logger)
     {
         _hotkeyService = hotkeyService ?? throw new ArgumentNullException(nameof(hotkeyService));
         _inputHookService = inputHookService ?? throw new ArgumentNullException(nameof(inputHookService));
         _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
+        _inputSimulator = inputSimulator ?? throw new ArgumentNullException(nameof(inputSimulator));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         
         _logger.LogDebug("RecordingService initialized");
@@ -121,11 +124,27 @@ public class RecordingService : IRecordingService
             // Create new recording session
             var session = new RecordingSession(recordingOptions);
             
+            // If using relative mouse movement, get current cursor position to initialize
+            Point initialMousePosition = Point.Zero;
+            if (recordingOptions.UseRelativeMouseMove && recordingOptions.RecordMouseMovements)
+            {
+                try
+                {
+                    initialMousePosition = await _inputSimulator.GetCursorPositionAsync();
+                    _logger.LogDebug("Initialized relative mouse movement with current position: {Position}", initialMousePosition);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to get current cursor position for relative movement initialization. Using Point.Zero.");
+                    initialMousePosition = Point.Zero;
+                }
+            }
+            
             lock (_stateLock)
             {
                 _currentSession = session;
                 _lastEventTime = DateTime.UtcNow;
-                _lastMousePosition = Point.Zero;
+                _lastMousePosition = initialMousePosition;
                 _isFirstEventInSegment = true;
             }
 
@@ -453,7 +472,8 @@ public class RecordingService : IRecordingService
         var stats = new RecordingStatistics
         {
             TotalCommands = commands.Count,
-            MouseMoveCommands = commands.Count(c => c is MouseMoveCommand || c is MouseMoveLowLevelCommand),
+            MouseMoveCommands = commands.Count(c => c is MouseMoveCommand || c is MouseMoveLowLevelCommand 
+                || c is MouseMoveRelativeCommand || c is MouseMoveRelativeLowLevelCommand),
             MouseClickCommands = commands.Count(c => c is MouseClickCommand),
             KeyboardCommands = commands.Count(c => c is KeyboardCommand),
             SleepCommands = commands.Count(c => c is SleepCommand),
@@ -523,9 +543,23 @@ public class RecordingService : IRecordingService
                 return;
             }
 
-            Command command = session.Options.UseLowLevelMouseMove
-                ? new MouseMoveLowLevelCommand(position)
-                : new MouseMoveCommand(position);
+            Command command;
+            if (session.Options.UseRelativeMouseMove)
+            {
+                // Calculate relative displacement
+                var deltaX = position.X - _lastMousePosition.X;
+                var deltaY = position.Y - _lastMousePosition.Y;
+                
+                command = session.Options.UseLowLevelMouseMove
+                    ? new MouseMoveRelativeLowLevelCommand(deltaX, deltaY)
+                    : new MouseMoveRelativeCommand(deltaX, deltaY);
+            }
+            else
+            {
+                command = session.Options.UseLowLevelMouseMove
+                    ? new MouseMoveLowLevelCommand(position)
+                    : new MouseMoveCommand(position);
+            }
             command.Delay = delay;
 
             session.AddCommand(command);

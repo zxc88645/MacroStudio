@@ -6,72 +6,94 @@ using MacroStudio.Domain.ValueObjects;
 namespace MacroStudio.Application.Services;
 
 /// <summary>
-/// Converts between the internal command list representation and a simple text script DSL.
+/// Converts recorded commands to Lua SourceText.
 /// </summary>
 public static class ScriptTextConverter
 {
     /// <summary>
-    /// Converts the commands in a script to a textual representation.
+    /// Converts a list of commands to Lua SourceText.
     /// </summary>
-    public static string ToText(Script script)
+    public static string CommandsToText(IEnumerable<Command> commands)
     {
-        if (script == null) throw new ArgumentNullException(nameof(script));
+        if (commands == null) throw new ArgumentNullException(nameof(commands));
 
         var sb = new StringBuilder();
 
-        foreach (var command in script.Commands)
+        foreach (var command in commands)
         {
             // Preserve timing: Command.Delay is the time gap since the previous command.
             // In Lua/text form we represent that gap explicitly via msleep(...) so
             // recorded scripts keep realistic pacing when executed by LuaScriptRunner.
             AppendDelayIfAny(sb, command.Delay);
 
-            switch (command)
-            {
-                case MouseMoveCommand move:
-                    sb.AppendLine($"move({move.Position.X}, {move.Position.Y})");
-                    break;
-                case MouseMoveLowLevelCommand moveLl:
-                    sb.AppendLine($"move_ll({moveLl.Position.X}, {moveLl.Position.Y})");
-                    break;
-
-                case MouseClickCommand click:
-                    var buttonName = ToButtonName(click.Button);
-                    var fn = click.Type switch
-                    {
-                        ClickType.Down => "mouse_down",
-                        ClickType.Up => "mouse_release",
-                        ClickType.Click => "mouse_click",
-                        _ => "mouse_click"
-                    };
-                    sb.AppendLine($"{fn}('{buttonName}')");
-                    break;
-
-                case SleepCommand sleep:
-                    AppendMsleepIfAny(sb, sleep.Duration);
-                    break;
-
-                case KeyboardCommand keyboard when !string.IsNullOrEmpty(keyboard.Text):
-                    sb.AppendLine($"type_text('{EscapeSingleQuotes(keyboard.Text)}')");
-                    break;
-
-                case KeyPressCommand kp:
-                    var keyName = ToKeyCharName(kp.Key);
-                    sb.AppendLine($"{(kp.IsDown ? "key_down" : "key_release")}('{keyName}')");
-                    break;
-
-                case KeyboardCommand keyboard:
-                    var keyList = string.Join("+", keyboard.Keys.Select(k => k.ToString()));
-                    sb.AppendLine($"# keys: {keyList}");
-                    break;
-
-                default:
-                    sb.AppendLine($"# Unsupported command type: {command.DisplayName}");
-                    break;
-            }
+            AppendCommand(sb, command);
         }
 
         return sb.ToString();
+    }
+
+    /// <summary>
+    /// Converts the commands in a script to a textual representation.
+    /// </summary>
+    public static string ToText(Script script)
+    {
+        if (script == null) throw new ArgumentNullException(nameof(script));
+        return CommandsToText(script.Commands);
+    }
+
+    private static void AppendCommand(StringBuilder sb, Command command)
+    {
+        switch (command)
+        {
+            case MouseMoveCommand move:
+                sb.AppendLine($"move({move.Position.X}, {move.Position.Y})");
+                break;
+            case MouseMoveLowLevelCommand moveLl:
+                sb.AppendLine($"move_ll({moveLl.Position.X}, {moveLl.Position.Y})");
+                break;
+
+            case MouseMoveRelativeCommand moveRel:
+                sb.AppendLine($"move_rel({moveRel.DeltaX}, {moveRel.DeltaY})");
+                break;
+
+            case MouseMoveRelativeLowLevelCommand moveRelLl:
+                sb.AppendLine($"move_rel_ll({moveRelLl.DeltaX}, {moveRelLl.DeltaY})");
+                break;
+
+            case MouseClickCommand click:
+                var buttonName = ToButtonName(click.Button);
+                var fn = click.Type switch
+                {
+                    ClickType.Down => "mouse_down",
+                    ClickType.Up => "mouse_release",
+                    ClickType.Click => "mouse_click",
+                    _ => "mouse_click"
+                };
+                sb.AppendLine($"{fn}('{buttonName}')");
+                break;
+
+            case SleepCommand sleep:
+                AppendMsleepIfAny(sb, sleep.Duration);
+                break;
+
+            case KeyboardCommand keyboard when !string.IsNullOrEmpty(keyboard.Text):
+                sb.AppendLine($"type_text('{EscapeSingleQuotes(keyboard.Text)}')");
+                break;
+
+            case KeyPressCommand kp:
+                var keyName = ToKeyCharName(kp.Key);
+                sb.AppendLine($"{(kp.IsDown ? "key_down" : "key_release")}('{keyName}')");
+                break;
+
+            case KeyboardCommand keyboard:
+                var keyList = string.Join("+", keyboard.Keys.Select(k => k.ToString()));
+                sb.AppendLine($"# keys: {keyList}");
+                break;
+
+            default:
+                sb.AppendLine($"# Unsupported command type: {command.DisplayName}");
+                break;
+        }
     }
 
     private static void AppendDelayIfAny(StringBuilder sb, TimeSpan delay)
@@ -141,6 +163,16 @@ public static class ScriptTextConverter
                 {
                     var ms = ParseSingleDoubleArg(codePart, "msleep");
                     commands.Add(new SleepCommand(TimeSpan.FromMilliseconds(ms)));
+                }
+                else if (codePart.StartsWith("move_rel_ll", StringComparison.OrdinalIgnoreCase))
+                {
+                    var (dx, dy) = ParseTwoIntArgs(codePart, "move_rel_ll");
+                    commands.Add(new MouseMoveRelativeLowLevelCommand(dx, dy));
+                }
+                else if (codePart.StartsWith("move_rel", StringComparison.OrdinalIgnoreCase))
+                {
+                    var (dx, dy) = ParseTwoIntArgs(codePart, "move_rel");
+                    commands.Add(new MouseMoveRelativeCommand(dx, dy));
                 }
                 else if (codePart.StartsWith("move_ll", StringComparison.OrdinalIgnoreCase))
                 {
@@ -225,8 +257,13 @@ public static class ScriptTextConverter
             throw new FormatException($"Invalid integer arguments for {name}(x, y).");
         }
 
-        if (x < 0 || y < 0)
-            throw new FormatException($"{name} coordinates must be non-negative.");
+        // Only validate non-negative for absolute positions (move, move_ll)
+        // Relative movements (move_rel, move_rel_ll) can have negative values
+        if (!name.Contains("rel", StringComparison.OrdinalIgnoreCase))
+        {
+            if (x < 0 || y < 0)
+                throw new FormatException($"{name} coordinates must be non-negative.");
+        }
 
         return (x, y);
     }
