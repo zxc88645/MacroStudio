@@ -62,40 +62,20 @@ public sealed class SafetyService : ISafetyService
 
         var violations = new List<LimitViolation>();
 
-        var estimated = script.EstimatedDuration;
-
-        if (script.CommandCount > limits.MaxCommandCount)
-        {
-            violations.Add(new LimitViolation(
-                LimitType.CommandCount,
-                limits.MaxCommandCount,
-                script.CommandCount,
-                $"Command count {script.CommandCount} exceeds max {limits.MaxCommandCount}"));
-        }
-
-        if (estimated > limits.MaxExecutionTime)
+        if (string.IsNullOrWhiteSpace(script.SourceText))
         {
             violations.Add(new LimitViolation(
                 LimitType.ExecutionTime,
-                limits.MaxExecutionTime,
-                estimated,
-                $"Estimated execution time {estimated} exceeds max {limits.MaxExecutionTime}"));
+                TimeSpan.Zero,
+                TimeSpan.Zero,
+                "Script has no source text"));
         }
 
-        // Basic command delay enforcement
-        var minDelayMs = limits.MinCommandDelay.TotalMilliseconds;
-        if (minDelayMs > 0 && script.Commands.Any(c => c.Delay < limits.MinCommandDelay))
-        {
-            violations.Add(new LimitViolation(
-                LimitType.CommandDelay,
-                limits.MinCommandDelay,
-                "Some commands have smaller delay",
-                $"One or more commands have delay smaller than {limits.MinCommandDelay}"));
-        }
+        var estimatedExecutionTime = TimeSpan.Zero;
 
         return violations.Count == 0
-            ? ExecutionLimitCheckResult.WithinLimits(estimated)
-            : ExecutionLimitCheckResult.ExceedsLimits(violations, estimated);
+            ? ExecutionLimitCheckResult.WithinLimits(estimatedExecutionTime)
+            : ExecutionLimitCheckResult.ExceedsLimits(violations, estimatedExecutionTime);
     }
 
     public async Task<AuthorizationResult> RequestAuthorizationAsync(DangerousOperation operation, AuthorizationContext context)

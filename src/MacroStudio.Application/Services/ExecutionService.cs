@@ -99,8 +99,6 @@ public sealed class ExecutionService : IExecutionService, IDisposable
 
     public event EventHandler<ExecutionProgressEventArgs>? ProgressChanged;
     public event EventHandler<ExecutionStateChangedEventArgs>? StateChanged;
-    public event EventHandler<CommandExecutingEventArgs>? CommandExecuting;
-    public event EventHandler<CommandExecutedEventArgs>? CommandExecuted;
     public event EventHandler<ExecutionErrorEventArgs>? ExecutionError;
     public event EventHandler<ExecutionCompletedEventArgs>? ExecutionCompleted;
 
@@ -317,19 +315,7 @@ public sealed class ExecutionService : IExecutionService, IDisposable
         
         RaiseStateChanged(prev, ExecutionState.Stepping, context.Session.Id, "Step");
 
-        await ExecuteSingleCommandAsync(context, context.CurrentCommandIndex, CancellationToken.None);
-
-        // After one step, pause
-        prev = context.State;
-        context.State = ExecutionState.Paused;
-        context.Session.ChangeState(ExecutionState.Paused);
-        
-        lock (_lockObject)
-        {
-            State = ExecutionState.Paused;
-        }
-        
-        RaiseStateChanged(prev, ExecutionState.Paused, context.Session.Id, "Paused after step");
+        throw new NotSupportedException("Step execution is not supported. Scripts are executed as a single unit.");
     }
 
     public Task TerminateExecutionAsync()
@@ -385,20 +371,9 @@ public sealed class ExecutionService : IExecutionService, IDisposable
         if (string.IsNullOrWhiteSpace(script.Name))
             errors.Add("Script name is empty.");
 
-        // A script can be represented either as a command list OR as Lua SourceText.
-        // If both are empty, it's not executable.
-        if (script.CommandCount == 0 && string.IsNullOrWhiteSpace(script.SourceText))
-            errors.Add("Script has no commands.");
-
-        for (var i = 0; i < script.CommandCount; i++)
-        {
-            if (!script.Commands[i].IsValid())
-                errors.Add($"Command at index {i} is invalid: {script.Commands[i]}");
-        }
-
-        // Basic dangerous heuristics (placeholder for ISafetyService later)
-        if (script.CommandCount > 10000)
-            warnings.Add("Large script; execution may be slow.");
+        // Scripts are represented as Lua SourceText.
+        if (string.IsNullOrWhiteSpace(script.SourceText))
+            errors.Add("Script has no source text.");
 
         return Task.FromResult(errors.Count > 0
             ? ExecutionValidationResult.Failure(errors, warnings, dangerous)
@@ -412,48 +387,19 @@ public sealed class ExecutionService : IExecutionService, IDisposable
 
         return new ExecutionStatistics
         {
-            TotalCommands = CurrentScript.CommandCount,
+            TotalCommands = 1,
             ExecutedCommands = session.ExecutedCommandCount,
-            ElapsedTime = session.ElapsedTime,
-            SpeedMultiplier = session.Options.SpeedMultiplier
+            ElapsedTime = session.ElapsedTime
         };
     }
 
     public TimeSpan? GetEstimatedRemainingTime()
     {
-        ScriptExecutionContext? context;
         lock (_lockObject)
         {
             if (CurrentScript == null)
             {
                 return null;
-            }
-
-            // 如果腳本仍在執行中，使用執行上下文
-            if (_activeExecutions.TryGetValue(CurrentScript.Id, out context))
-            {
-                return CalculateRemainingTime(context);
-            }
-
-            // 如果執行已完成，使用 CurrentSession 計算剩餘時間
-            if (CurrentSession != null && CurrentScript != null)
-            {
-                var script = CurrentScript;
-                var idx = CurrentCommandIndex;
-                if (idx < 0 || idx >= script.CommandCount) return null;
-
-                var remaining = TimeSpan.Zero;
-                for (var i = idx; i < script.CommandCount; i++)
-                {
-                    remaining = remaining.Add(script.Commands[i].Delay);
-                    if (script.Commands[i] is SleepCommand s)
-                        remaining = remaining.Add(s.Duration);
-                }
-
-                var speed = CurrentSession.Options.SpeedMultiplier <= 0 ? 1.0 : CurrentSession.Options.SpeedMultiplier;
-                if (speed <= 0) speed = 1.0;
-
-                return TimeSpan.FromMilliseconds(remaining.TotalMilliseconds / speed);
             }
 
             return null;
@@ -471,9 +417,7 @@ public sealed class ExecutionService : IExecutionService, IDisposable
             if (_safetyService.IsKillSwitchActive)
                 throw new InvalidOperationException("Kill switch is active.");
 
-            // Safety limits
-            if (script.CommandCount > session.Options.MaxCommandCount)
-                throw new InvalidOperationException($"Script exceeds max command count limit ({session.Options.MaxCommandCount}).");
+            // Safety limits are enforced by LuaScriptRunner
 
             var started = DateTime.UtcNow;
 
@@ -483,55 +427,25 @@ public sealed class ExecutionService : IExecutionService, IDisposable
                 await _inputSimulator.DelayAsync(session.Options.CountdownDuration);
             }
 
-            // Execution mode:
-            // - DebugInteractive (right-side Execution panel): always execute the command list so we can show real progress
-            //   and support pause/resume/stop/step.
-            // - RunOnly (hotkey): execute without pause/step/stop semantics. Prefer Lua SourceText when present, otherwise
-            //   fall back to command list. Progress is best-effort only.
+            var source = script.SourceText ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(source))
+                throw new InvalidOperationException("Script has no source text.");
+
             if (session.Options.ControlMode == ExecutionControlMode.DebugInteractive)
             {
-                if (script.CommandCount > 0)
-                {
-                    // Emit initial progress (0%)
-                    ProgressChanged?.Invoke(this, new ExecutionProgressEventArgs(session.Id, 0, script.CommandCount, session.ElapsedTime, CalculateRemainingTime(context)));
+                ProgressChanged?.Invoke(this, new ExecutionProgressEventArgs(session.Id, 0, 1, session.ElapsedTime, null));
 
-                    for (var i = 0; i < script.CommandCount; i++)
-                    {
-                        ct.ThrowIfCancellationRequested();
-                        context.PauseEvent.Wait(ct);
+                ct.ThrowIfCancellationRequested();
+                context.PauseEvent.Wait(ct); // allow "Pause" before start (after that it's best-effort)
 
-                        if (_safetyService.IsKillSwitchActive)
-                            throw new InvalidOperationException("Kill switch is active.");
+                if (_safetyService.IsKillSwitchActive)
+                    throw new InvalidOperationException("Kill switch is active.");
 
-                        // Safety: max execution time (coarse guard)
-                        if (DateTime.UtcNow - started > session.Options.MaxExecutionTime)
-                            throw new InvalidOperationException("Execution time limit exceeded.");
+                if (DateTime.UtcNow - started > session.Options.MaxExecutionTime)
+                    throw new InvalidOperationException("Execution time limit exceeded.");
 
-                        await ExecuteSingleCommandAsync(context, i, ct);
-                    }
-                }
-                else
-                {
-                    // DebugInteractive but no domain commands: run Lua SourceText (no step/pause granularity).
-                    var source = script.SourceText ?? string.Empty;
-                    if (string.IsNullOrWhiteSpace(source))
-                        throw new InvalidOperationException("Script has no commands.");
-
-                    // Best-effort progress: treat as a single unit of work so UI doesn't look stuck.
-                    ProgressChanged?.Invoke(this, new ExecutionProgressEventArgs(session.Id, 0, 1, session.ElapsedTime, null));
-
-                    ct.ThrowIfCancellationRequested();
-                    context.PauseEvent.Wait(ct); // allow "Pause" before start (after that it's best-effort)
-
-                    if (_safetyService.IsKillSwitchActive)
-                        throw new InvalidOperationException("Kill switch is active.");
-
-                    if (DateTime.UtcNow - started > session.Options.MaxExecutionTime)
-                        throw new InvalidOperationException("Execution time limit exceeded.");
-
-                    await _luaRunner.RunAsync(source, ct);
-                    ProgressChanged?.Invoke(this, new ExecutionProgressEventArgs(session.Id, 1, 1, session.ElapsedTime, TimeSpan.Zero));
-                }
+                await _luaRunner.RunAsync(source, ct);
+                ProgressChanged?.Invoke(this, new ExecutionProgressEventArgs(session.Id, 1, 1, session.ElapsedTime, TimeSpan.Zero));
             }
             else
             {
@@ -545,39 +459,22 @@ public sealed class ExecutionService : IExecutionService, IDisposable
                 if (DateTime.UtcNow - started > session.Options.MaxExecutionTime)
                     throw new InvalidOperationException("Execution time limit exceeded.");
 
-                var source = script.SourceText;
-                if (!string.IsNullOrWhiteSpace(source))
-                {
-                    await _luaRunner.RunAsync(source, ct);
-                }
-                else
-                {
-                    // Fall back to command list
-                    for (var i = 0; i < script.CommandCount; i++)
-                    {
-                        ct.ThrowIfCancellationRequested();
-                        if (_safetyService.IsKillSwitchActive)
-                            throw new InvalidOperationException("Kill switch is active.");
-                        if (DateTime.UtcNow - started > session.Options.MaxExecutionTime)
-                            throw new InvalidOperationException("Execution time limit exceeded.");
-                        await ExecuteSingleCommandAsync(context, i, ct);
-                    }
-                }
+                await _luaRunner.RunAsync(source, ct);
 
                 // Best-effort progress update at completion.
-                ProgressChanged?.Invoke(this, new ExecutionProgressEventArgs(session.Id, script.CommandCount, script.CommandCount, session.ElapsedTime, TimeSpan.Zero));
+                ProgressChanged?.Invoke(this, new ExecutionProgressEventArgs(session.Id, 1, 1, session.ElapsedTime, TimeSpan.Zero));
             }
 
             lock (_lockObject)
             {
-                context.CurrentCommandIndex = script.CommandCount;
-                session.UpdateProgress(context.CurrentCommandIndex);
+                context.CurrentCommandIndex = 1;
+                session.UpdateProgress(1);
                 context.State = ExecutionState.Completed;
                 // 如果這是當前腳本，更新狀態
                 if (CurrentScript?.Id == script.Id)
                 {
                     State = ExecutionState.Completed;
-                    CurrentCommandIndex = script.CommandCount; // best-effort for legacy UI
+                    CurrentCommandIndex = 1;
                 }
             }
 
@@ -641,109 +538,6 @@ public sealed class ExecutionService : IExecutionService, IDisposable
         }
     }
 
-    private async Task ExecuteSingleCommandAsync(ScriptExecutionContext context, int index, CancellationToken ct)
-    {
-        var session = context.Session;
-        var script = session.Script;
-        if (index < 0 || index >= script.CommandCount)
-            return;
-
-        var command = script.Commands[index];
-        var speed = session.Options.SpeedMultiplier <= 0 ? 1.0 : session.Options.SpeedMultiplier;
-
-        var delayBefore = TimeSpan.FromMilliseconds(command.Delay.TotalMilliseconds / speed);
-        if (delayBefore > TimeSpan.Zero)
-            await _inputSimulator.DelayAsync(delayBefore);
-
-        var executingArgs = new CommandExecutingEventArgs(command, session.Id, index);
-        CommandExecuting?.Invoke(this, executingArgs);
-
-        var sw = System.Diagnostics.Stopwatch.StartNew();
-        try
-        {
-            ct.ThrowIfCancellationRequested();
-
-            switch (command)
-            {
-                case MouseMoveCommand mm:
-                    await _inputSimulator.SimulateMouseMoveAsync(mm.Position);
-                    break;
-                    case MouseMoveLowLevelCommand mmll:
-                        await _inputSimulator.SimulateMouseMoveLowLevelAsync(mmll.Position);
-                        break;
-                case MouseClickCommand mc:
-                    await _inputSimulator.SimulateMouseClickAsync(mc.Button, mc.Type);
-                    break;
-                case KeyPressCommand kp:
-                    await _inputSimulator.SimulateKeyPressAsync(kp.Key, kp.IsDown);
-                    break;
-                case KeyboardCommand kc:
-                    if (!string.IsNullOrEmpty(kc.Text))
-                        await _inputSimulator.SimulateKeyboardInputAsync(kc.Text);
-                    else
-                    {
-                        foreach (var key in kc.Keys)
-                        {
-                            await _inputSimulator.SimulateKeyPressAsync(key, true);
-                            await _inputSimulator.SimulateKeyPressAsync(key, false);
-                        }
-                    }
-                    break;
-                case SleepCommand sc:
-                    var sleep = TimeSpan.FromMilliseconds(sc.Duration.TotalMilliseconds / speed);
-                    await _inputSimulator.DelayAsync(sleep);
-                    break;
-                default:
-                    throw new NotSupportedException($"Unsupported command type: {command.GetType().Name}");
-            }
-
-            sw.Stop();
-
-            lock (_lockObject)
-            {
-                context.CurrentCommandIndex = index + 1;
-                session.UpdateProgress(context.CurrentCommandIndex);
-                
-                // 如果這是當前腳本，更新當前命令索引
-                if (CurrentScript?.Id == script.Id)
-                {
-                    CurrentCommandIndex = context.CurrentCommandIndex;
-                }
-            }
-
-            CommandExecuted?.Invoke(this, new CommandExecutedEventArgs(command, session.Id, index, true, sw.Elapsed));
-            
-            // 計算剩餘時間（僅針對該腳本）
-            var remainingTime = CalculateRemainingTime(context);
-            ProgressChanged?.Invoke(this, new ExecutionProgressEventArgs(session.Id, context.CurrentCommandIndex, script.CommandCount, session.ElapsedTime, remainingTime));
-        }
-        catch (Exception ex)
-        {
-            sw.Stop();
-            CommandExecuted?.Invoke(this, new CommandExecutedEventArgs(command, session.Id, index, false, sw.Elapsed, ex));
-            throw;
-        }
-    }
-
-    private TimeSpan? CalculateRemainingTime(ScriptExecutionContext context)
-    {
-        var script = context.Script;
-        var idx = context.CurrentCommandIndex;
-        if (idx < 0 || idx >= script.CommandCount) return null;
-
-        var remaining = TimeSpan.Zero;
-        for (var i = idx; i < script.CommandCount; i++)
-        {
-            remaining = remaining.Add(script.Commands[i].Delay);
-            if (script.Commands[i] is SleepCommand s)
-                remaining = remaining.Add(s.Duration);
-        }
-
-        var speed = context.Session.Options.SpeedMultiplier <= 0 ? 1.0 : context.Session.Options.SpeedMultiplier;
-        if (speed <= 0) speed = 1.0;
-
-        return TimeSpan.FromMilliseconds(remaining.TotalMilliseconds / speed);
-    }
 
     private void RaiseStateChanged(ExecutionState previous, ExecutionState current, Guid sessionId, string? reason)
     {
@@ -765,7 +559,7 @@ public sealed class ExecutionService : IExecutionService, IDisposable
                 session.Id,
                 finalState,
                 session.ExecutedCommandCount,
-                session.Script.CommandCount,
+                1,
                 session.ElapsedTime,
                 success,
                 reason,
@@ -794,4 +588,5 @@ public sealed class ExecutionService : IExecutionService, IDisposable
         _pauseEvent.Dispose();
     }
 }
+
 

@@ -436,32 +436,16 @@ public class ScriptManager : IScriptManager
             errors.Add("Script name cannot exceed 200 characters.");
         }
 
-        // Validate commands
-        if (script.CommandCount == 0)
+        // Validate SourceText (primary representation for execution)
+        if (string.IsNullOrWhiteSpace(script.SourceText))
         {
-            warnings.Add("Script contains no commands.");
+            warnings.Add("Script has no source text. It may not be executable.");
         }
 
-        // Validate each command
-        for (int i = 0; i < script.CommandCount; i++)
+        // Check source text length (rough indicator of script complexity)
+        if (script.SourceTextLength > 100_000)
         {
-            var command = script.GetCommand(i);
-            if (!command.IsValid())
-            {
-                errors.Add($"Command at index {i} is invalid: {command.Description}");
-            }
-        }
-
-        // Check for very large scripts
-        if (script.CommandCount > 10000)
-        {
-            warnings.Add($"Script contains a very large number of commands ({script.CommandCount}). Execution may be slow.");
-        }
-
-        // Check estimated duration
-        if (script.EstimatedDuration > TimeSpan.FromHours(1))
-        {
-            warnings.Add($"Script has a very long estimated duration ({script.EstimatedDuration}). Consider breaking it into smaller scripts.");
+            warnings.Add($"Script has a very long source text ({script.SourceTextLength} characters). Consider breaking it into smaller scripts.");
         }
 
         return errors.Count > 0
