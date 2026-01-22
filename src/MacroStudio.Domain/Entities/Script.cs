@@ -3,7 +3,7 @@ using MacroStudio.Domain.ValueObjects;
 namespace MacroStudio.Domain.Entities;
 
 /// <summary>
-/// Represents an automation script containing a sequence of commands.
+/// Represents an automation script.
 /// </summary>
 public class Script
 {
@@ -71,24 +71,9 @@ public class Script
     public int CommandCount => _commands.Count;
 
     /// <summary>
-    /// Gets the estimated total execution time for this script (sum of all delays and sleep durations).
+    /// Gets the length of the SourceText in characters.
     /// </summary>
-    public TimeSpan EstimatedDuration
-    {
-        get
-        {
-            var totalTime = TimeSpan.Zero;
-            foreach (var command in _commands)
-            {
-                totalTime = totalTime.Add(command.Delay);
-                if (command is SleepCommand sleepCommand)
-                {
-                    totalTime = totalTime.Add(sleepCommand.Duration);
-                }
-            }
-            return totalTime;
-        }
-    }
+    public int SourceTextLength => _sourceText.Length;
 
     /// <summary>
     /// Initializes a new script with the specified name.
@@ -302,6 +287,8 @@ public class Script
 
     public override string ToString()
     {
-        return $"{Name} ({CommandCount} commands)";
+        if (string.IsNullOrWhiteSpace(SourceText))
+            return $"{Name} ({CommandCount} commands)";
+        return $"{Name} ({SourceTextLength} chars)";
     }
 }

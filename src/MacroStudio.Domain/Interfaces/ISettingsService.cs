@@ -21,7 +21,6 @@ public class AppSettings
     /// </summary>
     public string? UiLanguage { get; set; }
 
-    public double DefaultSpeedMultiplier { get; set; } = 1.0;
     public bool ShowCountdown { get; set; } = true;
     public double CountdownSeconds { get; set; } = 3.0;
 
@@ -54,7 +53,6 @@ public class AppSettings
         RecordingStopHotkey ??= HotkeyDefinition.Create("Recording Stop", HotkeyModifiers.None, VirtualKey.VK_F12, HotkeyTriggerMode.Once);
 
         ExecutionLimits ??= ExecutionLimits.Default();
-        if (DefaultSpeedMultiplier <= 0) DefaultSpeedMultiplier = 1.0;
         if (CountdownSeconds <= 0) CountdownSeconds = 3.0;
     }
 }

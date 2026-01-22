@@ -33,7 +33,7 @@ This directory contains the domain service interfaces that define the contracts 
   - Execution sessions with progress tracking (`ExecutionSession`)
   - Configurable execution options (`ExecutionOptions`)
   - Execution statistics and time estimation
-- **Events**: `ProgressChanged`, `StateChanged`, `CommandExecuting`, `CommandExecuted`, `ExecutionError`, `ExecutionCompleted`
+- **Events**: `ProgressChanged`, `StateChanged`, `ExecutionError`, `ExecutionCompleted`
 
 ## Supporting Service Interfaces
 
@@ -76,8 +76,6 @@ All domain events inherit from `DomainEventArgs` and include:
 ### Execution Events
 - `ExecutionProgressEventArgs`: Progress updates during execution
 - `ExecutionStateChangedEventArgs`: When execution state changes
-- `CommandExecutingEventArgs`: Before a command executes
-- `CommandExecutedEventArgs`: After a command executes
 - `ExecutionErrorEventArgs`: When execution errors occur
 - `ExecutionCompletedEventArgs`: When execution completes
 

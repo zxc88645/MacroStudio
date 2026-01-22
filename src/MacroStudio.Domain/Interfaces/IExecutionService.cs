@@ -41,16 +41,6 @@ public interface IExecutionService
     event EventHandler<ExecutionStateChangedEventArgs> StateChanged;
 
     /// <summary>
-    /// Event raised when a command is about to be executed.
-    /// </summary>
-    event EventHandler<CommandExecutingEventArgs> CommandExecuting;
-
-    /// <summary>
-    /// Event raised when a command has been executed.
-    /// </summary>
-    event EventHandler<CommandExecutedEventArgs> CommandExecuted;
-
-    /// <summary>
     /// Event raised when execution encounters an error.
     /// </summary>
     event EventHandler<ExecutionErrorEventArgs> ExecutionError;
@@ -260,11 +250,6 @@ public class ExecutionOptions
     public ExecutionControlMode ControlMode { get; set; } = ExecutionControlMode.DebugInteractive;
 
     /// <summary>
-    /// Speed multiplier for execution timing (1.0 = normal speed, 0.5 = half speed, 2.0 = double speed).
-    /// </summary>
-    public double SpeedMultiplier { get; set; } = 1.0;
-
-    /// <summary>
     /// Whether to show a countdown before starting execution.
     /// </summary>
     public bool ShowCountdown { get; set; } = true;
@@ -318,7 +303,6 @@ public class ExecutionOptions
     {
         TriggerSource = ExecutionTriggerSource.DebugPanel,
         ControlMode = ExecutionControlMode.DebugInteractive,
-        SpeedMultiplier = 0.5,
         ShowCountdown = false,
         StopOnError = true,
         RequireAuthorization = false
@@ -406,11 +390,6 @@ public class ExecutionStatistics
     /// Number of errors encountered during execution.
     /// </summary>
     public int ErrorCount { get; set; }
-
-    /// <summary>
-    /// Current execution speed multiplier.
-    /// </summary>
-    public double SpeedMultiplier { get; set; }
 }
 
 /// <summary>
