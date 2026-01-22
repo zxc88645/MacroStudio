@@ -34,7 +34,7 @@ public partial class RecordingViewModel : ObservableObject
     private bool recordMouseMovements = true;
 
     [ObservableProperty]
-    private bool useLowLevelMouseMove = false;
+    private bool useLowLevelMouseMove = true;
 
     [ObservableProperty]
     private bool recordMouseClicks = true;

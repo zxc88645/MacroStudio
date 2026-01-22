@@ -179,7 +179,7 @@ public class RecordingOptions
     /// <summary>
     /// When recording mouse movements, choose whether to emit a lower-level move command (move_ll) instead of move.
     /// </summary>
-    public bool UseLowLevelMouseMove { get; set; } = false;
+    public bool UseLowLevelMouseMove { get; set; } = true;
 
     /// <summary>
     /// Whether to record mouse clicks.
