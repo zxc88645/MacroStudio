@@ -52,9 +52,10 @@ public class ExecutionServicePropertyTests
             if (stats == null)
                 return false;
 
-            if (stats.TotalCommands != script.CommandCount)
+            // For Lua scripts, TotalCommands is always 1
+            if (stats.TotalCommands != 1)
                 return false;
-            if (stats.ExecutedCommands != script.CommandCount)
+            if (stats.ExecutedCommands != 1)
                 return false;
             if (stats.RemainingCommands != 0)
                 return false;
@@ -87,6 +88,8 @@ public class ExecutionServicePropertyTests
             };
             script.AddCommand(cmd);
         }
+        // Generate SourceText from commands for execution
+        script.SourceText = ScriptTextConverter.CommandsToText(script.Commands);
         return script;
     }
 
@@ -258,6 +261,8 @@ public class ExecutionServicePropertyTests
     {
         public Task SimulateMouseMoveAsync(Point position) => Task.CompletedTask;
         public Task SimulateMouseMoveLowLevelAsync(Point position) => Task.CompletedTask;
+        public Task SimulateMouseMoveRelativeAsync(int deltaX, int deltaY) => Task.CompletedTask;
+        public Task SimulateMouseMoveRelativeLowLevelAsync(int deltaX, int deltaY) => Task.CompletedTask;
 
         public Task SimulateMouseClickAsync(MouseButton button, ClickType type) => Task.CompletedTask;
 

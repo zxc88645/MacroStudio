@@ -28,11 +28,12 @@ public class UiResponsivenessPropertyTests
         exec.ProgressChanged += (_, _) => throw new InvalidOperationException("boom");
         exec.ExecutionError += (_, _) => throw new InvalidOperationException("boom");
         exec.ExecutionCompleted += (_, _) => throw new InvalidOperationException("boom");
-        exec.CommandExecuting += (_, _) => throw new InvalidOperationException("boom");
-        exec.CommandExecuted += (_, _) => throw new InvalidOperationException("boom");
+        // Note: CommandExecuting and CommandExecuted events are no longer used for Lua execution
 
         var script = new Script(name);
         script.AddCommand(new SleepCommand(TimeSpan.FromMilliseconds(1)));
+        // Generate SourceText from commands for execution
+        script.SourceText = ScriptTextConverter.CommandsToText(script.Commands);
 
         // If any handler exception leaks out, the test fails.
         exec.StartExecutionAsync(script, ExecutionOptions.Debug()).GetAwaiter().GetResult();
@@ -93,6 +94,8 @@ public class UiResponsivenessPropertyTests
     {
         public Task SimulateMouseMoveAsync(Point position) => Task.CompletedTask;
         public Task SimulateMouseMoveLowLevelAsync(Point position) => Task.CompletedTask;
+        public Task SimulateMouseMoveRelativeAsync(int deltaX, int deltaY) => Task.CompletedTask;
+        public Task SimulateMouseMoveRelativeLowLevelAsync(int deltaX, int deltaY) => Task.CompletedTask;
         public Task SimulateMouseClickAsync(MouseButton button, ClickType type) => Task.CompletedTask;
         public Task SimulateKeyboardInputAsync(string text) => Task.CompletedTask;
         public Task SimulateKeyPressAsync(VirtualKey key, bool isKeyDown) => Task.CompletedTask;
