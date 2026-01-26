@@ -4,6 +4,7 @@ using MacroStudio.Domain.Entities;
 using MacroStudio.Domain.Events;
 using MacroStudio.Domain.Interfaces;
 using MacroStudio.Domain.ValueObjects;
+using MacroStudio.Application.Services;
 using MacroStudio.Presentation.Views;
 using MacroStudio.Presentation.Utilities;
 
@@ -18,6 +19,7 @@ public partial class ExecutionControlViewModel : ObservableObject
     private readonly IExecutionService _executionService;
     private readonly ILoggingService _loggingService;
     private readonly ISettingsService _settingsService;
+    private readonly ArduinoConnectionService _arduinoConnectionService;
 
     [ObservableProperty]
     private Script? script;
@@ -46,11 +48,18 @@ public partial class ExecutionControlViewModel : ObservableObject
     [ObservableProperty]
     private string? lastError;
 
-    public ExecutionControlViewModel(IExecutionService executionService, ILoggingService loggingService, ISettingsService settingsService)
+    [ObservableProperty]
+    private InputMode inputMode = InputMode.Software;
+
+    [ObservableProperty]
+    private ArduinoConnectionState arduinoConnectionState = ArduinoConnectionState.Disconnected;
+
+    public ExecutionControlViewModel(IExecutionService executionService, ILoggingService loggingService, ISettingsService settingsService, ArduinoConnectionService arduinoConnectionService)
     {
         _executionService = executionService ?? throw new ArgumentNullException(nameof(executionService));
         _loggingService = loggingService ?? throw new ArgumentNullException(nameof(loggingService));
         _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
+        _arduinoConnectionService = arduinoConnectionService ?? throw new ArgumentNullException(nameof(arduinoConnectionService));
 
         // Mirror service state
         State = _executionService.State;
@@ -62,6 +71,8 @@ public partial class ExecutionControlViewModel : ObservableObject
         _executionService.StateChanged += OnStateChanged;
         _executionService.ExecutionError += OnExecutionError;
         _executionService.ExecutionCompleted += OnExecutionCompleted;
+
+        _arduinoConnectionService.ConnectionStateChanged += OnArduinoConnectionStateChanged;
 
         // Load defaults (fire and forget; UI will reflect when done)
         _ = LoadDefaultsAsync();
@@ -157,6 +168,7 @@ public partial class ExecutionControlViewModel : ObservableObject
         options.ControlMode = ExecutionControlMode.DebugInteractive;
         options.ShowCountdown = false; // UI handles countdown (focus warning)
         options.CountdownDuration = TimeSpan.Zero;
+        options.InputMode = InputMode;
 
         if (ShowCountdown && CountdownDuration > TimeSpan.Zero)
         {
@@ -319,6 +331,15 @@ public partial class ExecutionControlViewModel : ObservableObject
         {
             LastError = UiText.Format("Ui.ErrorPrefix", $"{e.Context}: {e.Error.GetType().Name} - {e.Error.Message}", "Error: {0}");
             UpdateCanExecute();
+        });
+    }
+
+    private void OnArduinoConnectionStateChanged(object? sender, Domain.Interfaces.ArduinoConnectionStateChangedEventArgs e)
+    {
+        RunOnUiThread(() =>
+        {
+            ArduinoConnectionState = e.NewState;
+            OnPropertyChanged(nameof(ArduinoConnectionState));
         });
     }
 

@@ -24,6 +24,7 @@ public partial class RecordingViewModel : ObservableObject
     private readonly ILoggingService _loggingService;
     private readonly ScriptListViewModel _scriptListViewModel;
     private readonly CommandGridViewModel _commandGridViewModel;
+    private readonly ArduinoConnectionService _arduinoConnectionService;
 
     public ObservableCollection<Command> RecordedCommands { get; } = new();
 
@@ -51,24 +52,41 @@ public partial class RecordingViewModel : ObservableObject
     [ObservableProperty]
     private int totalCommands;
 
+    [ObservableProperty]
+    private InputMode inputMode = InputMode.Software;
+
+    [ObservableProperty]
+    private ArduinoConnectionState arduinoConnectionState = ArduinoConnectionState.Disconnected;
+
+    [ObservableProperty]
+    private ObservableCollection<string> availableSerialPorts = new();
+
+    [ObservableProperty]
+    private string? selectedSerialPort;
+
     public RecordingViewModel(
         IRecordingService recordingService,
         IScriptManager scriptManager,
         ILoggingService loggingService,
         ScriptListViewModel scriptListViewModel,
-        CommandGridViewModel commandGridViewModel)
+        CommandGridViewModel commandGridViewModel,
+        ArduinoConnectionService arduinoConnectionService)
     {
         _recordingService = recordingService ?? throw new ArgumentNullException(nameof(recordingService));
         _scriptManager = scriptManager ?? throw new ArgumentNullException(nameof(scriptManager));
         _loggingService = loggingService ?? throw new ArgumentNullException(nameof(loggingService));
         _scriptListViewModel = scriptListViewModel ?? throw new ArgumentNullException(nameof(scriptListViewModel));
         _commandGridViewModel = commandGridViewModel ?? throw new ArgumentNullException(nameof(commandGridViewModel));
+        _arduinoConnectionService = arduinoConnectionService ?? throw new ArgumentNullException(nameof(arduinoConnectionService));
 
         _recordingService.CommandRecorded += OnCommandRecorded;
         _recordingService.RecordingStateChanged += OnRecordingStateChanged;
         _recordingService.RecordingError += OnRecordingError;
 
+        _arduinoConnectionService.ConnectionStateChanged += OnArduinoConnectionStateChanged;
+
         UpdateStatusFromService();
+        RefreshSerialPorts();
     }
 
     public bool IsRecording => _recordingService.IsRecording;
@@ -158,7 +176,8 @@ public partial class RecordingViewModel : ObservableObject
                 RecordKeyboardInput = RecordKeyboardInput,
                 FilterSystemEvents = FilterSystemEvents,
                 UseLowLevelMouseMove = UseLowLevelMouseMove,
-                UseRelativeMouseMove = UseRelativeMouseMove
+                UseRelativeMouseMove = UseRelativeMouseMove,
+                InputMode = InputMode
             };
 
             await _recordingService.StartRecordingAsync(options);
@@ -366,5 +385,86 @@ public partial class RecordingViewModel : ObservableObject
             SaveAsScriptCommand.NotifyCanExecuteChanged();
         });
     }
+
+    private void OnArduinoConnectionStateChanged(object? sender, Domain.Interfaces.ArduinoConnectionStateChangedEventArgs e)
+    {
+        System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+        {
+            ArduinoConnectionState = e.NewState;
+            OnPropertyChanged(nameof(ArduinoConnectionState));
+        });
+    }
+
+    [RelayCommand]
+    private async Task RefreshSerialPortsAsync()
+    {
+        try
+        {
+            var ports = await _arduinoConnectionService.GetAvailablePortsAsync();
+            AvailableSerialPorts.Clear();
+            foreach (var port in ports)
+            {
+                AvailableSerialPorts.Add(port);
+            }
+        }
+        catch (Exception ex)
+        {
+            await _loggingService.LogErrorAsync("Failed to refresh serial ports", ex);
+        }
+    }
+
+    private void RefreshSerialPorts()
+    {
+        _ = RefreshSerialPortsAsync();
+    }
+
+    [RelayCommand(CanExecute = nameof(CanConnectArduino))]
+    private async Task ConnectArduinoAsync()
+    {
+        if (string.IsNullOrWhiteSpace(SelectedSerialPort))
+            return;
+
+        try
+        {
+            await _arduinoConnectionService.ConnectAsync(SelectedSerialPort);
+        }
+        catch (Exception ex)
+        {
+            RecordingStatusText = UiText.Format("Ui.ErrorPrefix", ex.Message, "Error: {0}");
+            await _loggingService.LogErrorAsync("Failed to connect to Arduino", ex);
+        }
+        finally
+        {
+            ConnectArduinoCommand.NotifyCanExecuteChanged();
+            DisconnectArduinoCommand.NotifyCanExecuteChanged();
+        }
+    }
+
+    private bool CanConnectArduino()
+        => !string.IsNullOrWhiteSpace(SelectedSerialPort) && 
+           ArduinoConnectionState != ArduinoConnectionState.Connected &&
+           ArduinoConnectionState != ArduinoConnectionState.Connecting;
+
+    [RelayCommand(CanExecute = nameof(CanDisconnectArduino))]
+    private async Task DisconnectArduinoAsync()
+    {
+        try
+        {
+            await _arduinoConnectionService.DisconnectAsync();
+        }
+        catch (Exception ex)
+        {
+            RecordingStatusText = UiText.Format("Ui.ErrorPrefix", ex.Message, "Error: {0}");
+            await _loggingService.LogErrorAsync("Failed to disconnect from Arduino", ex);
+        }
+        finally
+        {
+            ConnectArduinoCommand.NotifyCanExecuteChanged();
+            DisconnectArduinoCommand.NotifyCanExecuteChanged();
+        }
+    }
+
+    private bool CanDisconnectArduino()
+        => ArduinoConnectionState == ArduinoConnectionState.Connected;
 }
 

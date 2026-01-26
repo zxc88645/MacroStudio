@@ -69,6 +69,24 @@ public static class ServiceCollectionExtensions
         services.AddScoped<LuaScriptRunner>();
         services.AddSingleton<ILoggingService, LoggingService>();
 
+        // Register Arduino connection service
+        services.AddSingleton<ArduinoConnectionService>();
+
+        // Register factories for input simulators and hook services
+        // Note: We need to register with specific implementations, so we use a factory function
+        services.AddScoped<IInputSimulatorFactory>(sp =>
+        {
+            var software = sp.GetRequiredService<Win32InputSimulator>();
+            var hardware = sp.GetRequiredService<ArduinoInputSimulator>();
+            return new InputSimulatorFactory(software, hardware);
+        });
+        services.AddSingleton<IInputHookServiceFactory>(sp =>
+        {
+            var software = sp.GetRequiredService<Win32InputHookService>();
+            var hardware = sp.GetRequiredService<ArduinoInputHookService>();
+            return new InputHookServiceFactory(software, hardware);
+        });
+
         return services;
     }
 
@@ -78,12 +96,17 @@ public static class ServiceCollectionExtensions
     private static IServiceCollection AddInfrastructureServices(this IServiceCollection services)
     {
         // Register input simulation services
-        services.AddScoped<IInputSimulator, Win32InputSimulator>();
+        services.AddScoped<Win32InputSimulator>();
+        services.AddScoped<ArduinoInputSimulator>();
         services.AddScoped<CoordinateTransformer>();
         services.AddScoped<TimingUtilities>();
 
-        // Register input hook service for recording
-        services.AddSingleton<IInputHookService, Win32InputHookService>();
+        // Register input hook services for recording
+        services.AddSingleton<Win32InputHookService>();
+        services.AddSingleton<ArduinoInputHookService>();
+
+        // Register Arduino services
+        services.AddSingleton<IArduinoService, ArduinoSerialService>();
 
         // Register global hotkey service
         services.AddSingleton<IGlobalHotkeyService, Win32GlobalHotkeyService>();
