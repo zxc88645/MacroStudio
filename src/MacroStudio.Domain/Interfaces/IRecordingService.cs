@@ -222,6 +222,11 @@ public class RecordingOptions
     public bool FilterSystemEvents { get; set; } = true;
 
     /// <summary>
+    /// The input mode to use for recording (Software or Hardware).
+    /// </summary>
+    public InputMode InputMode { get; set; } = InputMode.Software;
+
+    /// <summary>
     /// Creates default recording options.
     /// </summary>
     /// <returns>A new RecordingOptions instance with default values.</returns>

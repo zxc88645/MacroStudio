@@ -290,6 +290,11 @@ public class ExecutionOptions
     public TimeSpan RepeatDelay { get; set; } = TimeSpan.Zero;
 
     /// <summary>
+    /// The input mode to use for execution (Software or Hardware).
+    /// </summary>
+    public InputMode InputMode { get; set; } = InputMode.Software;
+
+    /// <summary>
     /// Creates default execution options.
     /// </summary>
     /// <returns>A new ExecutionOptions instance with default values.</returns>
