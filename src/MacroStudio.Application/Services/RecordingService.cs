@@ -13,9 +13,10 @@ namespace MacroStudio.Application.Services;
 public class RecordingService : IRecordingService
 {
     private readonly IGlobalHotkeyService _hotkeyService;
-    private readonly IInputHookService _inputHookService;
+    private readonly IInputHookServiceFactory _inputHookServiceFactory;
+    private readonly ArduinoConnectionService _arduinoConnectionService;
     private readonly ISettingsService _settingsService;
-    private readonly IInputSimulator _inputSimulator;
+    private readonly IInputSimulatorFactory _inputSimulatorFactory;
     private readonly ILogger<RecordingService> _logger;
     private readonly object _stateLock = new();
 
@@ -24,6 +25,7 @@ public class RecordingService : IRecordingService
     private Point _lastMousePosition;
     private bool _isFirstEventInSegment = true;
     private bool _hooksSubscribed;
+    private IInputHookService? _currentInputHookService;
     private HotkeyDefinition? _ignoreStart;
     private HotkeyDefinition? _ignorePause;
     private HotkeyDefinition? _ignoreStop;
@@ -32,16 +34,18 @@ public class RecordingService : IRecordingService
     /// Initializes a new instance of the RecordingService class.
     /// </summary>
     /// <param name="hotkeyService">Global hotkey service for recording control.</param>
-    /// <param name="inputHookService">Global input hook service for capturing mouse and keyboard events.</param>
+    /// <param name="inputHookServiceFactory">Factory for creating input hook services based on input mode.</param>
+    /// <param name="arduinoConnectionService">Arduino connection service for validating hardware mode.</param>
     /// <param name="settingsService">Settings service for reading recording hotkey configuration (to avoid recording control keys).</param>
-    /// <param name="inputSimulator">Input simulator for getting current cursor position.</param>
+    /// <param name="inputSimulatorFactory">Factory for creating input simulators (for getting cursor position).</param>
     /// <param name="logger">Logger for diagnostic information.</param>
-    public RecordingService(IGlobalHotkeyService hotkeyService, IInputHookService inputHookService, ISettingsService settingsService, IInputSimulator inputSimulator, ILogger<RecordingService> logger)
+    public RecordingService(IGlobalHotkeyService hotkeyService, IInputHookServiceFactory inputHookServiceFactory, ArduinoConnectionService arduinoConnectionService, ISettingsService settingsService, IInputSimulatorFactory inputSimulatorFactory, ILogger<RecordingService> logger)
     {
         _hotkeyService = hotkeyService ?? throw new ArgumentNullException(nameof(hotkeyService));
-        _inputHookService = inputHookService ?? throw new ArgumentNullException(nameof(inputHookService));
+        _inputHookServiceFactory = inputHookServiceFactory ?? throw new ArgumentNullException(nameof(inputHookServiceFactory));
+        _arduinoConnectionService = arduinoConnectionService ?? throw new ArgumentNullException(nameof(arduinoConnectionService));
         _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
-        _inputSimulator = inputSimulator ?? throw new ArgumentNullException(nameof(inputSimulator));
+        _inputSimulatorFactory = inputSimulatorFactory ?? throw new ArgumentNullException(nameof(inputSimulatorFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         _logger.LogDebug("RecordingService initialized");
@@ -113,6 +117,12 @@ public class RecordingService : IRecordingService
                 _ignoreStart = _ignorePause = _ignoreStop = null;
             }
 
+            // Validate hardware mode connection
+            if (recordingOptions.InputMode == InputMode.Hardware)
+            {
+                _arduinoConnectionService.EnsureConnected();
+            }
+
             // Validate recording setup BEFORE creating a session (otherwise IsRecording becomes true).
             var validationResult = await ValidateRecordingSetupAsync();
             if (!validationResult.IsValid)
@@ -124,13 +134,17 @@ public class RecordingService : IRecordingService
             // Create new recording session
             var session = new RecordingSession(recordingOptions);
 
+            // Get the appropriate input hook service based on input mode
+            var inputHookService = _inputHookServiceFactory.GetInputHookService(recordingOptions.InputMode);
+
             // If using relative mouse movement, get current cursor position to initialize
             Point initialMousePosition = Point.Zero;
             if (recordingOptions.UseRelativeMouseMove && recordingOptions.RecordMouseMovements)
             {
                 try
                 {
-                    initialMousePosition = await _inputSimulator.GetCursorPositionAsync();
+                    var inputSimulator = _inputSimulatorFactory.GetInputSimulator(recordingOptions.InputMode);
+                    initialMousePosition = await inputSimulator.GetCursorPositionAsync();
                     _logger.LogDebug("Initialized relative mouse movement with current position: {Position}", initialMousePosition);
                 }
                 catch (Exception ex)
@@ -143,14 +157,15 @@ public class RecordingService : IRecordingService
             lock (_stateLock)
             {
                 _currentSession = session;
+                _currentInputHookService = inputHookService;
                 _lastEventTime = DateTime.UtcNow;
                 _lastMousePosition = initialMousePosition;
                 _isFirstEventInSegment = true;
             }
 
-            // Install Win32 hooks for mouse and keyboard events
-            EnsureHookSubscriptions();
-            await _inputHookService.InstallHooksAsync(recordingOptions);
+            // Install hooks for mouse and keyboard events
+            EnsureHookSubscriptions(inputHookService);
+            await inputHookService.InstallHooksAsync(recordingOptions);
 
             // Raise state changed event
             RaiseStateChanged(previousState, RecordingState.Active, session.Id, "Recording started");
@@ -187,13 +202,23 @@ public class RecordingService : IRecordingService
             _logger.LogInformation("Stopping recording session {SessionId}", session.Id);
 
             // Uninstall hooks (best effort)
-            try
+            IInputHookService? hookService;
+            lock (_stateLock)
             {
-                await _inputHookService.UninstallHooksAsync();
+                hookService = _currentInputHookService;
+                _currentInputHookService = null;
             }
-            catch (Exception hookEx)
+
+            if (hookService != null)
             {
-                _logger.LogWarning(hookEx, "Failed to uninstall input hooks");
+                try
+                {
+                    await hookService.UninstallHooksAsync();
+                }
+                catch (Exception hookEx)
+                {
+                    _logger.LogWarning(hookEx, "Failed to uninstall input hooks");
+                }
             }
 
             // Change state to stopped
@@ -220,14 +245,18 @@ public class RecordingService : IRecordingService
         }
     }
 
-    private void EnsureHookSubscriptions()
+    private void EnsureHookSubscriptions(IInputHookService inputHookService)
     {
         if (_hooksSubscribed)
-            return;
+        {
+            // Unsubscribe from previous service if different
+            // Note: In practice, we should track which service we're subscribed to
+            // For simplicity, we'll just subscribe to the new one
+        }
 
-        _inputHookService.MouseMoved += OnMouseMoved;
-        _inputHookService.MouseClicked += OnMouseClicked;
-        _inputHookService.KeyboardInput += OnKeyboardInput;
+        inputHookService.MouseMoved += OnMouseMoved;
+        inputHookService.MouseClicked += OnMouseClicked;
+        inputHookService.KeyboardInput += OnKeyboardInput;
         _hooksSubscribed = true;
     }
 

@@ -12,7 +12,8 @@ namespace MacroStudio.Application.Services;
 /// </summary>
 public sealed class ExecutionService : IExecutionService, IDisposable
 {
-    private readonly IInputSimulator _inputSimulator;
+    private readonly IInputSimulatorFactory _inputSimulatorFactory;
+    private readonly ArduinoConnectionService _arduinoConnectionService;
     private readonly IGlobalHotkeyService _globalHotkeyService;
     private readonly ISafetyService _safetyService;
     private readonly LuaScriptRunner _luaRunner;
@@ -64,9 +65,10 @@ public sealed class ExecutionService : IExecutionService, IDisposable
         }
     }
 
-    public ExecutionService(IInputSimulator inputSimulator, IGlobalHotkeyService globalHotkeyService, ISafetyService safetyService, LuaScriptRunner luaRunner, ILogger<ExecutionService> logger)
+    public ExecutionService(IInputSimulatorFactory inputSimulatorFactory, ArduinoConnectionService arduinoConnectionService, IGlobalHotkeyService globalHotkeyService, ISafetyService safetyService, LuaScriptRunner luaRunner, ILogger<ExecutionService> logger)
     {
-        _inputSimulator = inputSimulator ?? throw new ArgumentNullException(nameof(inputSimulator));
+        _inputSimulatorFactory = inputSimulatorFactory ?? throw new ArgumentNullException(nameof(inputSimulatorFactory));
+        _arduinoConnectionService = arduinoConnectionService ?? throw new ArgumentNullException(nameof(arduinoConnectionService));
         _globalHotkeyService = globalHotkeyService ?? throw new ArgumentNullException(nameof(globalHotkeyService));
         _safetyService = safetyService ?? throw new ArgumentNullException(nameof(safetyService));
         _luaRunner = luaRunner ?? throw new ArgumentNullException(nameof(luaRunner));
@@ -106,6 +108,12 @@ public sealed class ExecutionService : IExecutionService, IDisposable
     {
         if (script == null) throw new ArgumentNullException(nameof(script));
         options ??= ExecutionOptions.Default();
+
+        // Validate hardware mode connection
+        if (options.InputMode == InputMode.Hardware)
+        {
+            _arduinoConnectionService.EnsureConnected();
+        }
 
         // 檢查該腳本是否已經在執行中
         lock (_lockObject)
@@ -421,10 +429,13 @@ public sealed class ExecutionService : IExecutionService, IDisposable
 
             var started = DateTime.UtcNow;
 
+            // Get the appropriate input simulator for countdown delay
+            var inputSimulator = _inputSimulatorFactory.GetInputSimulator(session.Options.InputMode);
+
             // Optional countdown warning
             if (session.Options.ShowCountdown && session.Options.CountdownDuration > TimeSpan.Zero)
             {
-                await _inputSimulator.DelayAsync(session.Options.CountdownDuration);
+                await inputSimulator.DelayAsync(session.Options.CountdownDuration);
             }
 
             var source = script.SourceText ?? string.Empty;
@@ -444,7 +455,7 @@ public sealed class ExecutionService : IExecutionService, IDisposable
                 if (DateTime.UtcNow - started > session.Options.MaxExecutionTime)
                     throw new InvalidOperationException("Execution time limit exceeded.");
 
-                await _luaRunner.RunAsync(source, ct);
+                await _luaRunner.RunAsync(source, ct, inputMode: session.Options.InputMode);
                 ProgressChanged?.Invoke(this, new ExecutionProgressEventArgs(session.Id, 1, 1, session.ElapsedTime, TimeSpan.Zero));
             }
             else
@@ -459,7 +470,7 @@ public sealed class ExecutionService : IExecutionService, IDisposable
                 if (DateTime.UtcNow - started > session.Options.MaxExecutionTime)
                     throw new InvalidOperationException("Execution time limit exceeded.");
 
-                await _luaRunner.RunAsync(source, ct);
+                await _luaRunner.RunAsync(source, ct, inputMode: session.Options.InputMode);
 
                 // Best-effort progress update at completion.
                 ProgressChanged?.Invoke(this, new ExecutionProgressEventArgs(session.Id, 1, 1, session.ElapsedTime, TimeSpan.Zero));

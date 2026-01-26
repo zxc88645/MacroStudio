@@ -8,18 +8,18 @@ namespace MacroStudio.Application.Services;
 
 public sealed class LuaScriptRunner
 {
-    private readonly IInputSimulator _inputSimulator;
+    private readonly IInputSimulatorFactory _inputSimulatorFactory;
     private readonly ISafetyService _safetyService;
     private readonly ILogger<LuaScriptRunner> _logger;
 
-    public LuaScriptRunner(IInputSimulator inputSimulator, ISafetyService safetyService, ILogger<LuaScriptRunner> logger)
+    public LuaScriptRunner(IInputSimulatorFactory inputSimulatorFactory, ISafetyService safetyService, ILogger<LuaScriptRunner> logger)
     {
-        _inputSimulator = inputSimulator ?? throw new ArgumentNullException(nameof(inputSimulator));
+        _inputSimulatorFactory = inputSimulatorFactory ?? throw new ArgumentNullException(nameof(inputSimulatorFactory));
         _safetyService = safetyService ?? throw new ArgumentNullException(nameof(safetyService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task RunAsync(string? sourceText, CancellationToken ct, LuaExecutionLimits? limits = null)
+    public async Task RunAsync(string? sourceText, CancellationToken ct, LuaExecutionLimits? limits = null, InputMode inputMode = InputMode.Software)
     {
         limits ??= LuaExecutionLimits.Default();
 
@@ -39,6 +39,9 @@ public sealed class LuaScriptRunner
         script.DebuggerEnabled = true;
         script.AttachDebugger(new LimiterDebugger(_safetyService, ct, limits));
 
+        // Get the appropriate input simulator based on input mode
+        var inputSimulator = _inputSimulatorFactory.GetInputSimulator(inputMode);
+
         // Host API
         script.Globals["sleep"] = (Func<double, DynValue>)(seconds =>
         {
@@ -55,66 +58,66 @@ public sealed class LuaScriptRunner
         script.Globals["move"] = (Action<int, int>)((x, y) =>
         {
             ct.ThrowIfCancellationRequested();
-            _inputSimulator.SimulateMouseMoveAsync(new Point(x, y)).GetAwaiter().GetResult();
+            inputSimulator.SimulateMouseMoveAsync(new Point(x, y)).GetAwaiter().GetResult();
         });
 
         script.Globals["move_ll"] = (Action<int, int>)((x, y) =>
         {
             ct.ThrowIfCancellationRequested();
-            _inputSimulator.SimulateMouseMoveLowLevelAsync(new Point(x, y)).GetAwaiter().GetResult();
+            inputSimulator.SimulateMouseMoveLowLevelAsync(new Point(x, y)).GetAwaiter().GetResult();
         });
 
         script.Globals["move_rel"] = (Action<int, int>)((dx, dy) =>
         {
             ct.ThrowIfCancellationRequested();
-            _inputSimulator.SimulateMouseMoveRelativeAsync(dx, dy).GetAwaiter().GetResult();
+            inputSimulator.SimulateMouseMoveRelativeAsync(dx, dy).GetAwaiter().GetResult();
         });
 
         script.Globals["move_rel_ll"] = (Action<int, int>)((dx, dy) =>
         {
             ct.ThrowIfCancellationRequested();
-            _inputSimulator.SimulateMouseMoveRelativeLowLevelAsync(dx, dy).GetAwaiter().GetResult();
+            inputSimulator.SimulateMouseMoveRelativeLowLevelAsync(dx, dy).GetAwaiter().GetResult();
         });
 
         script.Globals["type_text"] = (Action<string>)(text =>
         {
             ct.ThrowIfCancellationRequested();
-            _inputSimulator.SimulateKeyboardInputAsync(text ?? string.Empty).GetAwaiter().GetResult();
+            inputSimulator.SimulateKeyboardInputAsync(text ?? string.Empty).GetAwaiter().GetResult();
         });
 
         script.Globals["mouse_click"] = (Action<string>)(button =>
         {
             var b = ParseMouseButton(button);
             ct.ThrowIfCancellationRequested();
-            _inputSimulator.SimulateMouseClickAsync(b, ClickType.Click).GetAwaiter().GetResult();
+            inputSimulator.SimulateMouseClickAsync(b, ClickType.Click).GetAwaiter().GetResult();
         });
 
         script.Globals["mouse_down"] = (Action<string>)(button =>
         {
             var b = ParseMouseButton(button);
             ct.ThrowIfCancellationRequested();
-            _inputSimulator.SimulateMouseClickAsync(b, ClickType.Down).GetAwaiter().GetResult();
+            inputSimulator.SimulateMouseClickAsync(b, ClickType.Down).GetAwaiter().GetResult();
         });
 
         script.Globals["mouse_release"] = (Action<string>)(button =>
         {
             var b = ParseMouseButton(button);
             ct.ThrowIfCancellationRequested();
-            _inputSimulator.SimulateMouseClickAsync(b, ClickType.Up).GetAwaiter().GetResult();
+            inputSimulator.SimulateMouseClickAsync(b, ClickType.Up).GetAwaiter().GetResult();
         });
 
         script.Globals["key_down"] = (Action<string>)(key =>
         {
             var vk = ParseVirtualKey(key);
             ct.ThrowIfCancellationRequested();
-            _inputSimulator.SimulateKeyPressAsync(vk, true).GetAwaiter().GetResult();
+            inputSimulator.SimulateKeyPressAsync(vk, true).GetAwaiter().GetResult();
         });
 
         script.Globals["key_release"] = (Action<string>)(key =>
         {
             var vk = ParseVirtualKey(key);
             ct.ThrowIfCancellationRequested();
-            _inputSimulator.SimulateKeyPressAsync(vk, false).GetAwaiter().GetResult();
+            inputSimulator.SimulateKeyPressAsync(vk, false).GetAwaiter().GetResult();
         });
 
         // Execute: run on threadpool so the caller can await without blocking UI.
