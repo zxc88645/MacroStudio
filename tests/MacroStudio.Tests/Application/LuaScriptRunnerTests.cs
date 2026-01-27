@@ -31,7 +31,7 @@ key_down('a')
 key_release('a')
 ";
 
-        await runner.RunAsync(lua, CancellationToken.None, inputMode: InputMode.Software);
+        await runner.RunAsync(lua, CancellationToken.None, inputMode: InputMode.HighLevel);
 
         input.VerifyAll();
     }

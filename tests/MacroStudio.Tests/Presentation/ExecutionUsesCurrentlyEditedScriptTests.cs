@@ -62,14 +62,17 @@ public class ExecutionUsesCurrentlyEditedScriptTests
             var scriptHotkeyHook = new Mock<IScriptHotkeyHookService>();
 
             var inputSimulator = new Mock<IInputSimulator>();
+            var inputSimulatorFactory = new Mock<IInputSimulatorFactory>();
+            inputSimulatorFactory.Setup(x => x.GetInputSimulator(It.IsAny<InputMode>())).Returns(inputSimulator.Object);
 
             var arduinoConnectionService = new ArduinoConnectionService(new FakeArduinoService(), NullLogger<ArduinoConnectionService>.Instance);
             var scriptListVm = new ScriptListViewModel(scriptManager.Object, logging.Object);
             var commandGridVm = new CommandGridViewModel(scriptManager.Object, logging.Object, inputSimulator.Object);
             var execVm = new ExecutionControlViewModel(exec, logging.Object, settings.Object, arduinoConnectionService);
-            var recordingVm = new RecordingViewModel(recordingService.Object, scriptManager.Object, logging.Object, scriptListVm, commandGridVm, arduinoConnectionService);
+            var recordingVm = new RecordingViewModel(recordingService.Object, scriptManager.Object, logging.Object, scriptListVm, commandGridVm, arduinoConnectionService, settings.Object);
             var loggingVm = new LoggingViewModel(logging.Object);
-            var settingsVm = new SettingsViewModel(settings.Object, recordingHotkeyHook.Object, logging.Object, new LocalizationService());
+            var settingsVm = new SettingsViewModel(settings.Object, recordingHotkeyHook.Object, logging.Object, new LocalizationService(), arduinoConnectionService);
+            var debugVm = new DebugViewModel(arduinoConnectionService, logging.Object, inputSimulatorFactory.Object, settings.Object);
 
             var mainVm = new MainViewModel(
                 scriptManager.Object,
@@ -84,7 +87,8 @@ public class ExecutionUsesCurrentlyEditedScriptTests
                 execVm,
                 recordingVm,
                 loggingVm,
-                settingsVm);
+                settingsVm,
+                debugVm);
 
             // Hook DataContext so ExecutionControlViewModel can see "currently edited script"
             var wnd = new global::System.Windows.Window { DataContext = mainVm };
