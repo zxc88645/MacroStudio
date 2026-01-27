@@ -45,11 +45,12 @@ public static class ScriptTextConverter
     {
         switch (command)
         {
+            // All move commands use unified functions - actual behavior depends on InputMode setting
             case MouseMoveCommand move:
                 sb.AppendLine($"move({move.Position.X}, {move.Position.Y})");
                 break;
             case MouseMoveLowLevelCommand moveLl:
-                sb.AppendLine($"move_ll({moveLl.Position.X}, {moveLl.Position.Y})");
+                sb.AppendLine($"move({moveLl.Position.X}, {moveLl.Position.Y})");
                 break;
 
             case MouseMoveRelativeCommand moveRel:
@@ -57,7 +58,7 @@ public static class ScriptTextConverter
                 break;
 
             case MouseMoveRelativeLowLevelCommand moveRelLl:
-                sb.AppendLine($"move_rel_ll({moveRelLl.DeltaX}, {moveRelLl.DeltaY})");
+                sb.AppendLine($"move_rel({moveRelLl.DeltaX}, {moveRelLl.DeltaY})");
                 break;
 
             case MouseClickCommand click:
@@ -166,8 +167,9 @@ public static class ScriptTextConverter
                 }
                 else if (codePart.StartsWith("move_rel_ll", StringComparison.OrdinalIgnoreCase))
                 {
+                    // Legacy: treat move_rel_ll as move_rel (behavior depends on InputMode setting)
                     var (dx, dy) = ParseTwoIntArgs(codePart, "move_rel_ll");
-                    commands.Add(new MouseMoveRelativeLowLevelCommand(dx, dy));
+                    commands.Add(new MouseMoveRelativeCommand(dx, dy));
                 }
                 else if (codePart.StartsWith("move_rel", StringComparison.OrdinalIgnoreCase))
                 {
@@ -176,8 +178,9 @@ public static class ScriptTextConverter
                 }
                 else if (codePart.StartsWith("move_ll", StringComparison.OrdinalIgnoreCase))
                 {
+                    // Legacy: treat move_ll as move (behavior depends on InputMode setting)
                     var (x, y) = ParseTwoIntArgs(codePart, "move_ll");
-                    commands.Add(new MouseMoveLowLevelCommand(new Point(x, y)));
+                    commands.Add(new MouseMoveCommand(new Point(x, y)));
                 }
                 else if (codePart.StartsWith("move", StringComparison.OrdinalIgnoreCase))
                 {

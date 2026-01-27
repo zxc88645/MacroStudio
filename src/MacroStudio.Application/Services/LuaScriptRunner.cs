@@ -19,7 +19,7 @@ public sealed class LuaScriptRunner
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task RunAsync(string? sourceText, CancellationToken ct, LuaExecutionLimits? limits = null, InputMode inputMode = InputMode.Software)
+    public async Task RunAsync(string? sourceText, CancellationToken ct, LuaExecutionLimits? limits = null, InputMode inputMode = InputMode.HighLevel)
     {
         limits ??= LuaExecutionLimits.Default();
 
@@ -55,28 +55,32 @@ public sealed class LuaScriptRunner
             return DynValue.Nil;
         });
 
+        // Unified move function - uses high-level or low-level based on input mode
         script.Globals["move"] = (Action<int, int>)((x, y) =>
         {
             ct.ThrowIfCancellationRequested();
-            inputSimulator.SimulateMouseMoveAsync(new Point(x, y)).GetAwaiter().GetResult();
+            if (inputMode == InputMode.LowLevel)
+            {
+                inputSimulator.SimulateMouseMoveLowLevelAsync(new Point(x, y)).GetAwaiter().GetResult();
+            }
+            else
+            {
+                inputSimulator.SimulateMouseMoveAsync(new Point(x, y)).GetAwaiter().GetResult();
+            }
         });
 
-        script.Globals["move_ll"] = (Action<int, int>)((x, y) =>
-        {
-            ct.ThrowIfCancellationRequested();
-            inputSimulator.SimulateMouseMoveLowLevelAsync(new Point(x, y)).GetAwaiter().GetResult();
-        });
-
+        // Unified relative move function - uses high-level or low-level based on input mode setting
         script.Globals["move_rel"] = (Action<int, int>)((dx, dy) =>
         {
             ct.ThrowIfCancellationRequested();
-            inputSimulator.SimulateMouseMoveRelativeAsync(dx, dy).GetAwaiter().GetResult();
-        });
-
-        script.Globals["move_rel_ll"] = (Action<int, int>)((dx, dy) =>
-        {
-            ct.ThrowIfCancellationRequested();
-            inputSimulator.SimulateMouseMoveRelativeLowLevelAsync(dx, dy).GetAwaiter().GetResult();
+            if (inputMode == InputMode.LowLevel)
+            {
+                inputSimulator.SimulateMouseMoveRelativeLowLevelAsync(dx, dy).GetAwaiter().GetResult();
+            }
+            else
+            {
+                inputSimulator.SimulateMouseMoveRelativeAsync(dx, dy).GetAwaiter().GetResult();
+            }
         });
 
         script.Globals["type_text"] = (Action<string>)(text =>
