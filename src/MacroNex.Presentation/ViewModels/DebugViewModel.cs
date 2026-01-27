@@ -522,25 +522,40 @@ public partial class DebugViewModel : ObservableObject
 
         sb.AppendLine($"平均比例: X={avgRatioX:F3}, Y={avgRatioY:F3}");
 
+        // 根據曲線類型顯示不同信息
+        string curveTypeStr = data.CurveType switch
+        {
+            AccelerationCurveType.WindowsEnhanced => "Windows 增強指標精確度",
+            AccelerationCurveType.Polynomial => "多項式擬合",
+            _ => "線性"
+        };
+        sb.AppendLine($"曲線類型: {curveTypeStr}");
+
+        // 如果是 Windows 加速模式，顯示加速曲線控制點
+        if (data.CurveType == AccelerationCurveType.WindowsEnhanced && 
+            data.AccelerationThresholds.Length >= 2)
+        {
+            sb.AppendLine("加速曲線控制點:");
+            for (int i = 0; i < data.AccelerationThresholds.Length; i++)
+            {
+                sb.AppendLine($"  速度 {data.AccelerationThresholds[i]:F1} → 增益 {data.AccelerationGains[i]:F3}");
+            }
+        }
         // 顯示多項式模型（如果有）
-        if (data.PolynomialCoefficientsX.Length >= 2)
+        else if (data.PolynomialCoefficientsX.Length >= 2)
         {
             sb.Append("X 軸模型: HID = ");
             sb.Append(FormatPolynomial(data.PolynomialCoefficientsX));
             sb.AppendLine();
-        }
-        if (data.PolynomialCoefficientsY.Length >= 2)
-        {
-            sb.Append("Y 軸模型: HID = ");
-            sb.Append(FormatPolynomial(data.PolynomialCoefficientsY));
-            sb.AppendLine();
+            
+            if (data.PolynomialCoefficientsY.Length >= 2)
+            {
+                sb.Append("Y 軸模型: HID = ");
+                sb.Append(FormatPolynomial(data.PolynomialCoefficientsY));
+            }
         }
 
-        // 顯示模式
-        string mode = data.HasMouseAcceleration ? "非線性（滑鼠加速）" : "線性";
-        sb.Append($"模式: {mode}");
-
-        return sb.ToString();
+        return sb.ToString().TrimEnd();
     }
 
     private static string FormatPolynomial(double[] coefficients)

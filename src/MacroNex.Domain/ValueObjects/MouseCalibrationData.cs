@@ -2,9 +2,16 @@ namespace MacroNex.Domain.ValueObjects;
 
 /// <summary>
 /// 滑鼠校準數據，用於 HID ΔXY 到實際像素的轉換。
-/// 支援非線性模型（考慮 Windows 滑鼠加速）。
-/// 使用多項式回歸進行智能擬合。
+/// 基於 Microsoft Windows Pointer Ballistics 官方文檔實現。
+/// 支援非線性模型（考慮 Windows 滑鼠加速/增強指標精確度）。
 /// </summary>
+/// <remarks>
+/// Windows 滑鼠加速算法要點：
+/// 1. 使用向量大小（magnitude）計算加速倍數，而非分別處理 X/Y
+/// 2. 使用 5 點查找表進行線性插值
+/// 3. 保留子像素餘數以獲得平滑移動
+/// 4. 物理單位轉換：速度 = mickey × UpdateRate / DPI
+/// </remarks>
 public class MouseCalibrationData
 {
     /// <summary>
@@ -38,8 +45,23 @@ public class MouseCalibrationData
     public bool HasMouseAcceleration { get; set; }
 
     /// <summary>
+    /// 加速曲線類型
+    /// </summary>
+    public AccelerationCurveType CurveType { get; set; } = AccelerationCurveType.Linear;
+
+    /// <summary>
+    /// Windows 加速曲線的 5 個控制點（速度閾值）
+    /// </summary>
+    public double[] AccelerationThresholds { get; set; } = Array.Empty<double>();
+
+    /// <summary>
+    /// Windows 加速曲線的 5 個控制點（對應增益）
+    /// </summary>
+    public double[] AccelerationGains { get; set; } = Array.Empty<double>();
+
+    /// <summary>
     /// 根據目標像素移動量，計算需要發送的 HID delta（反向查找）。
-    /// 優先使用多項式模型，fallback 到查表插值。
+    /// 基於 Windows Pointer Ballistics 算法實現。
     /// </summary>
     /// <param name="targetPixelDelta">目標像素移動量</param>
     /// <param name="useYAxis">是否使用 Y 軸數據</param>
@@ -56,23 +78,117 @@ public class MouseCalibrationData
         bool isNegative = targetPixelDelta < 0;
         double absTarget = Math.Abs(targetPixelDelta);
 
-        // 優先使用多項式模型
-        if (coefficients.Length >= 2)
+        // 方法選擇：根據加速曲線類型
+        double hidDelta;
+        
+        if (CurveType == AccelerationCurveType.WindowsEnhanced && 
+            AccelerationThresholds.Length >= 2 && AccelerationGains.Length >= 2)
         {
-            double hidDelta = EvaluatePolynomial(absTarget, coefficients);
-            // 確保結果合理（不為負數且不過大）
-            if (hidDelta >= 0 && hidDelta < 10000)
+            // 使用 Windows 風格的加速曲線（反向計算）
+            hidDelta = CalculateHidDeltaByWindowsCurve(absTarget);
+        }
+        else if (coefficients.Length >= 2)
+        {
+            // 使用多項式模型
+            hidDelta = EvaluatePolynomial(absTarget, coefficients);
+            if (hidDelta < 0 || hidDelta >= 10000)
             {
-                int result = (int)Math.Round(hidDelta);
-                return isNegative ? -result : result;
+                // 多項式結果不合理，fallback
+                hidDelta = CalculateHidDeltaByInterpolationInternal(absTarget, points);
+            }
+        }
+        else
+        {
+            // Fallback: 使用查表插值
+            hidDelta = CalculateHidDeltaByInterpolationInternal(absTarget, points);
+        }
+
+        int result = (int)Math.Round(hidDelta);
+        return isNegative ? -result : result;
+    }
+
+    /// <summary>
+    /// 使用 Windows 風格加速曲線反向計算 HID delta
+    /// Windows 公式：PointerVelocity = MouseVelocity × Gain
+    /// 反向：MouseVelocity = PointerVelocity / Gain
+    /// </summary>
+    private double CalculateHidDeltaByWindowsCurve(double targetPixelDelta)
+    {
+        // 找到目標像素值對應的加速增益（反向查找）
+        // 由於加速是速度相關的，我們需要模擬 Windows 的行為
+        
+        // 首先估計對應的增益區間
+        // 假設：targetPixel = hidDelta × gain
+        // 所以：hidDelta = targetPixel / gain
+        
+        // 使用二分搜尋找到正確的 HID delta
+        double low = 0;
+        double high = targetPixelDelta * 2; // 初始上界
+        
+        for (int iteration = 0; iteration < 50; iteration++)
+        {
+            double mid = (low + high) / 2;
+            double predictedPixel = CalculatePixelDeltaByWindowsCurve(mid);
+            
+            if (Math.Abs(predictedPixel - targetPixelDelta) < 0.1)
+                return mid;
+            
+            if (predictedPixel < targetPixelDelta)
+                low = mid;
+            else
+                high = mid;
+        }
+        
+        return (low + high) / 2;
+    }
+
+    /// <summary>
+    /// 使用 Windows 風格加速曲線計算像素移動量
+    /// 根據 Microsoft Pointer Ballistics 文檔實現
+    /// </summary>
+    private double CalculatePixelDeltaByWindowsCurve(double hidDelta)
+    {
+        if (AccelerationThresholds.Length < 2 || AccelerationGains.Length < 2)
+            return hidDelta;
+
+        double absHid = Math.Abs(hidDelta);
+        
+        // 在閾值點之間進行線性插值查找增益
+        double gain = 1.0;
+        
+        for (int i = 0; i < AccelerationThresholds.Length - 1; i++)
+        {
+            double t1 = AccelerationThresholds[i];
+            double t2 = AccelerationThresholds[i + 1];
+            double g1 = AccelerationGains[i];
+            double g2 = AccelerationGains[i + 1];
+            
+            if (absHid >= t1 && absHid <= t2)
+            {
+                // 線性插值
+                double t = (t2 - t1) > 0.001 ? (absHid - t1) / (t2 - t1) : 0;
+                gain = g1 + t * (g2 - g1);
+                break;
+            }
+            else if (absHid < t1 && i == 0)
+            {
+                // 低於最低閾值
+                gain = t1 > 0.001 ? (g1 / t1) * absHid : g1;
+                break;
+            }
+            else if (absHid > t2 && i == AccelerationThresholds.Length - 2)
+            {
+                // 高於最高閾值，線性外推
+                double slope = (g2 - g1) / Math.Max(t2 - t1, 0.001);
+                gain = g2 + slope * (absHid - t2);
+                break;
             }
         }
 
-        // Fallback: 使用查表插值
-        return CalculateHidDeltaByInterpolation(absTarget, points, isNegative);
+        return absHid * gain;
     }
 
-    private int CalculateHidDeltaByInterpolation(double absTarget, List<CalibrationPoint> points, bool isNegative)
+    private double CalculateHidDeltaByInterpolationInternal(double absTarget, List<CalibrationPoint> points)
     {
         // 排序確保點按 ActualPixelDelta 升序排列
         var sortedPoints = points
@@ -81,21 +197,19 @@ public class MouseCalibrationData
             .ToList();
 
         if (sortedPoints.Count == 0)
-            return (int)Math.Round(isNegative ? -absTarget : absTarget);
+            return absTarget;
 
         // 邊界處理
         if (absTarget <= sortedPoints[0].ActualPixelDelta)
         {
             double ratio = sortedPoints[0].HidDelta / Math.Max(sortedPoints[0].ActualPixelDelta, 0.001);
-            int result = (int)Math.Round(absTarget * ratio);
-            return isNegative ? -result : result;
+            return absTarget * ratio;
         }
 
         if (absTarget >= sortedPoints[^1].ActualPixelDelta)
         {
             double ratio = sortedPoints[^1].HidDelta / Math.Max(sortedPoints[^1].ActualPixelDelta, 0.001);
-            int result = (int)Math.Round(absTarget * ratio);
-            return isNegative ? -result : result;
+            return absTarget * ratio;
         }
 
         // 使用 Catmull-Rom 樣條插值（比線性插值更平滑）
@@ -110,19 +224,16 @@ public class MouseCalibrationData
                            Math.Max(p2.ActualPixelDelta - p1.ActualPixelDelta, 0.001);
                 
                 // 使用 Hermite 插值獲得更平滑的曲線
-                double hidDelta = HermiteInterpolate(
+                return HermiteInterpolate(
                     i > 0 ? sortedPoints[i - 1].HidDelta : p1.HidDelta,
                     p1.HidDelta,
                     p2.HidDelta,
                     i < sortedPoints.Count - 2 ? sortedPoints[i + 2].HidDelta : p2.HidDelta,
                     t);
-                
-                int result = (int)Math.Round(hidDelta);
-                return isNegative ? -result : result;
             }
         }
 
-        return (int)Math.Round(isNegative ? -absTarget : absTarget);
+        return absTarget;
     }
 
     /// <summary>
@@ -159,13 +270,76 @@ public class MouseCalibrationData
     /// <summary>
     /// 使用最小二乘法擬合多項式（Pixel -> HID）
     /// </summary>
+    /// <summary>
+    /// 分析校準數據並擬合最佳模型
+    /// </summary>
     public void FitPolynomial(int degree = 2)
     {
+        // 首先檢測是否存在滑鼠加速
+        HasMouseAcceleration = DetectMouseAcceleration();
+
+        if (HasMouseAcceleration)
+        {
+            // 檢測到加速，嘗試擬合 Windows 風格加速曲線
+            FitWindowsAccelerationCurve();
+            CurveType = AccelerationCurveType.WindowsEnhanced;
+        }
+        else
+        {
+            // 線性行為，使用簡單多項式
+            CurveType = AccelerationCurveType.Linear;
+        }
+
+        // 同時擬合多項式作為備用
         PolynomialCoefficientsX = FitPolynomialForAxis(PointsX, degree);
         PolynomialCoefficientsY = FitPolynomialForAxis(PointsY, degree);
+    }
+
+    /// <summary>
+    /// 擬合 Windows 風格的加速曲線
+    /// 根據校準點推算出速度閾值和對應增益
+    /// </summary>
+    private void FitWindowsAccelerationCurve()
+    {
+        // 合併 X 和 Y 的校準數據（因為 Windows 使用向量大小）
+        var allPoints = PointsX.Concat(PointsY)
+            .Where(p => p.HidDelta > 0 && p.ActualPixelDelta > 0)
+            .OrderBy(p => p.HidDelta)
+            .ToList();
+
+        if (allPoints.Count < 3)
+            return;
+
+        // 提取閾值和增益
+        // 閾值 = HID delta（代表滑鼠移動速度）
+        // 增益 = ActualPixelDelta / HidDelta（速度倍增因子）
+        var thresholds = new List<double> { 0 };
+        var gains = new List<double> { allPoints[0].Ratio };
+
+        // 選擇關鍵點作為曲線控制點
+        // Windows 使用 5 個點，我們根據數據分布選擇
+        int step = Math.Max(1, (allPoints.Count - 1) / 4);
         
-        // 檢測是否存在顯著的非線性（滑鼠加速）
-        HasMouseAcceleration = DetectMouseAcceleration();
+        for (int i = step; i < allPoints.Count; i += step)
+        {
+            var point = allPoints[Math.Min(i, allPoints.Count - 1)];
+            thresholds.Add(point.HidDelta);
+            gains.Add(point.Ratio);
+        }
+
+        // 確保包含最後一個點
+        if (thresholds.Count < 5 && allPoints.Count > 0)
+        {
+            var lastPoint = allPoints[^1];
+            if (thresholds[^1] != lastPoint.HidDelta)
+            {
+                thresholds.Add(lastPoint.HidDelta);
+                gains.Add(lastPoint.Ratio);
+            }
+        }
+
+        AccelerationThresholds = thresholds.ToArray();
+        AccelerationGains = gains.ToArray();
     }
 
     private double[] FitPolynomialForAxis(List<CalibrationPoint> points, int degree)
@@ -415,4 +589,26 @@ public class CalibrationPoint
     public double Ratio => HidDelta != 0 ? ActualPixelDelta / HidDelta : 0;
 
     public override string ToString() => $"HID: {HidDelta} -> Pixel: {ActualPixelDelta:F1} (Ratio: {Ratio:F3})";
+}
+
+/// <summary>
+/// 加速曲線類型
+/// </summary>
+public enum AccelerationCurveType
+{
+    /// <summary>
+    /// 線性模式（無加速或加速已禁用）
+    /// </summary>
+    Linear,
+
+    /// <summary>
+    /// Windows 增強指標精確度模式
+    /// 使用 5 點查找表和線性插值
+    /// </summary>
+    WindowsEnhanced,
+
+    /// <summary>
+    /// 多項式模式（用於自定義曲線）
+    /// </summary>
+    Polynomial
 }
