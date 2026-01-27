@@ -6,7 +6,7 @@ The WPF MacroNex is a Windows desktop application that enables users to record, 
 
 ## Glossary
 
-- **Macro_Studio**: The main WPF desktop application system
+- **MacroNex**: The main WPF desktop application system
 - **Script**: A sequence of automation commands that can be recorded, edited, and executed
 - **Command**: An individual automation action (mouse click, keyboard input, delay, etc.)
 - **Recorder**: The subsystem responsible for capturing user input and converting it to commands
@@ -76,12 +76,12 @@ The WPF MacroNex is a Windows desktop application that enables users to record, 
 
 #### Acceptance Criteria
 
-1. WHEN the Kill_Switch hotkey is activated, THE Macro_Studio SHALL immediately terminate all automation execution and return control to the user
-2. WHEN a dangerous operation is attempted for the first time, THE Macro_Studio SHALL display an authorization prompt requiring explicit user consent
-3. WHEN script execution begins, THE Macro_Studio SHALL display a focus warning with a 3-second countdown before starting
-4. THE Macro_Studio SHALL enforce execution limits including maximum command count and maximum execution time
+1. WHEN the Kill_Switch hotkey is activated, THE MacroNex SHALL immediately terminate all automation execution and return control to the user
+2. WHEN a dangerous operation is attempted for the first time, THE MacroNex SHALL display an authorization prompt requiring explicit user consent
+3. WHEN script execution begins, THE MacroNex SHALL display a focus warning with a 3-second countdown before starting
+4. THE MacroNex SHALL enforce execution limits including maximum command count and maximum execution time
 5. THE Kill_Switch SHALL be configurable with a default binding of Ctrl+Shift+Esc
-6. WHEN execution limits are exceeded, THE Macro_Studio SHALL automatically stop execution and log the event
+6. WHEN execution limits are exceeded, THE MacroNex SHALL automatically stop execution and log the event
 
 ### Requirement 6: Data Persistence and Import/Export
 
@@ -115,12 +115,12 @@ The WPF MacroNex is a Windows desktop application that enables users to record, 
 
 #### Acceptance Criteria
 
-1. WHEN the application starts, THE Macro_Studio SHALL display the main window with script list, command grid, and control panels
+1. WHEN the application starts, THE MacroNex SHALL display the main window with script list, command grid, and control panels
 2. WHEN a user selects a script, THE Command_Grid SHALL immediately display its commands in an editable format
-3. WHEN execution is active, THE Macro_Studio SHALL provide clear visual indicators of current status and progress
-4. THE Macro_Studio SHALL support keyboard shortcuts for common operations including record, play, pause, and stop
-5. WHEN the user interface updates, THE Macro_Studio SHALL maintain responsive performance even with large script collections
-6. THE Macro_Studio SHALL provide search and filtering capabilities for script management
+3. WHEN execution is active, THE MacroNex SHALL provide clear visual indicators of current status and progress
+4. THE MacroNex SHALL support keyboard shortcuts for common operations including record, play, pause, and stop
+5. WHEN the user interface updates, THE MacroNex SHALL maintain responsive performance even with large script collections
+6. THE MacroNex SHALL provide search and filtering capabilities for script management
 
 ### Requirement 9: Architecture and Testability
 
@@ -128,9 +128,9 @@ The WPF MacroNex is a Windows desktop application that enables users to record, 
 
 #### Acceptance Criteria
 
-1. WHEN domain operations are performed, THE Macro_Studio SHALL execute them independently of WPF and Win32 dependencies
+1. WHEN domain operations are performed, THE MacroNex SHALL execute them independently of WPF and Win32 dependencies
 2. WHEN Win32 operations are required, THE Infrastructure_Layer SHALL handle all system-specific interactions
 3. WHEN unit tests are executed, THE Domain_Layer SHALL be testable without external dependencies
-4. THE Macro_Studio SHALL implement MVVM pattern with clear separation between View, ViewModel, and Model layers
+4. THE MacroNex SHALL implement MVVM pattern with clear separation between View, ViewModel, and Model layers
 5. WHEN integration testing is performed, THE Infrastructure_Layer SHALL be mockable for isolated testing
-6. THE Macro_Studio SHALL follow hexagonal architecture principles with dependency inversion
+6. THE MacroNex SHALL follow hexagonal architecture principles with dependency inversion

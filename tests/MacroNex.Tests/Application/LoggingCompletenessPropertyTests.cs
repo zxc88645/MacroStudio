@@ -1,4 +1,4 @@
-﻿using FsCheck;
+using FsCheck;
 using FsCheck.Xunit;
 using MacroNex.Application.Services;
 using MacroNex.Domain.Interfaces;
@@ -13,7 +13,7 @@ namespace MacroNex.Tests.Application;
 public class LoggingCompletenessPropertyTests
 {
     [Property]
-    // Feature: macro-studio, Property 7: Logging Completeness
+    // Feature: macronex, Property 7: Logging Completeness
     public bool LoggingCompleteness_AllLevels_AreCapturedWithTimestamps(NonEmptyString message)
     {
         var msg = message.Get.Trim();
@@ -62,7 +62,7 @@ public class LoggingCompletenessPropertyTests
     }
 
     [Property]
-    // Feature: macro-studio, Property 7: Logging Completeness
+    // Feature: macronex, Property 7: Logging Completeness
     public bool LoggingCompleteness_WithContext_IsPreserved(NonEmptyString message, NonEmptyString contextKey, NonEmptyString contextValue)
     {
         var msg = message.Get.Trim();
@@ -97,7 +97,7 @@ public class LoggingCompletenessPropertyTests
     }
 
     [Property]
-    // Feature: macro-studio, Property 7: Logging Completeness
+    // Feature: macronex, Property 7: Logging Completeness
     public bool LoggingCompleteness_ErrorWithException_ContainsExceptionDetails(NonEmptyString message)
     {
         var msg = message.Get.Trim();
@@ -134,7 +134,7 @@ public class LoggingCompletenessPropertyTests
     }
 
     [Property]
-    // Feature: macro-studio, Property 7: Logging Completeness
+    // Feature: macronex, Property 7: Logging Completeness
     public bool LoggingCompleteness_Filtering_ReturnsCorrectEntries(NonEmptyString[] messages)
     {
         if (messages == null || messages.Length == 0)
@@ -183,7 +183,7 @@ public class LoggingCompletenessPropertyTests
     }
 
     [Property]
-    // Feature: macro-studio, Property 7: Logging Completeness
+    // Feature: macronex, Property 7: Logging Completeness
     public bool LoggingCompleteness_Statistics_AreAccurate(NonEmptyString[] messages)
     {
         if (messages == null || messages.Length == 0)

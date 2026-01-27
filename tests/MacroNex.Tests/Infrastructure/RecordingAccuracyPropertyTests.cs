@@ -1,4 +1,4 @@
-﻿using FsCheck;
+using FsCheck;
 using FsCheck.Xunit;
 using MacroNex.Domain.ValueObjects;
 using MacroNex.Infrastructure.Utilities;
@@ -9,7 +9,7 @@ namespace MacroNex.Tests.Infrastructure;
 public class RecordingAccuracyPropertyTests
 {
     [Property]
-    // Feature: macro-studio, Property 3: Recording Accuracy
+    // Feature: macronex, Property 3: Recording Accuracy
     public bool RecordingAccuracy_SmoothPath_StartEndPreserved(PositiveInt steps, int x1, int y1, int x2, int y2)
     {
         var transformer = new CoordinateTransformer(NullLogger<CoordinateTransformer>.Instance);
@@ -33,7 +33,7 @@ public class RecordingAccuracyPropertyTests
     }
 
     [Property]
-    // Feature: macro-studio, Property 3: Recording Accuracy
+    // Feature: macronex, Property 3: Recording Accuracy
     public bool RecordingAccuracy_TimingUtilities_SpeedMultiplier_Monotonic(PositiveInt baseMs, PositiveInt multInt)
     {
         var timing = new TimingUtilities(NullLogger<TimingUtilities>.Instance);

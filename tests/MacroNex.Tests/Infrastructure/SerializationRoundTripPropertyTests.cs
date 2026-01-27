@@ -1,4 +1,4 @@
-﻿using FsCheck;
+using FsCheck;
 using FsCheck.Xunit;
 using MacroNex.Domain.Entities;
 using MacroNex.Infrastructure.Storage;
@@ -9,7 +9,7 @@ namespace MacroNex.Tests.Infrastructure;
 public class SerializationRoundTripPropertyTests
 {
     [Property]
-    // Feature: macro-studio, Property 6: Serialization Round-Trip Consistency
+    // Feature: macronex, Property 6: Serialization Round-Trip Consistency
     // Validates: Requirements 6.1, 6.2, 6.3, 6.4, 6.5, 6.6
     public bool SerializationRoundTripConsistency(NonEmptyString scriptName, PositiveInt commandCount)
     {

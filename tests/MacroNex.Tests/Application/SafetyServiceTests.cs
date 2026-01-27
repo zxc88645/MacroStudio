@@ -1,4 +1,4 @@
-﻿using MacroNex.Application.Services;
+using MacroNex.Application.Services;
 using MacroNex.Domain.Interfaces;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
@@ -8,7 +8,7 @@ namespace MacroNex.Tests.Application;
 public class SafetyServiceTests
 {
     [Fact]
-    // Feature: macro-studio, Property 5: Safety Mechanism Effectiveness
+    // Feature: macronex, Property 5: Safety Mechanism Effectiveness
     public async Task ActivateKillSwitchAsync_ShouldSetActiveAndRaiseEvent()
     {
         var service = new SafetyService(NullLogger<SafetyService>.Instance);

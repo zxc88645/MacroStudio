@@ -422,7 +422,7 @@ The application employs both unit testing and property-based testing for compreh
 Each property test must include a comment referencing the design document property:
 ```csharp
 [Property]
-// Feature: macro-studio, Property 1: Script Lifecycle Integrity
+// Feature: macronex, Property 1: Script Lifecycle Integrity
 public Property ScriptLifecycleIntegrity(Script script, ScriptOperation operation)
 ```
 

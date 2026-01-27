@@ -1,4 +1,4 @@
-﻿using FsCheck;
+using FsCheck;
 using FsCheck.Xunit;
 using MacroNex.Application.Services;
 using MacroNex.Domain.Entities;
@@ -15,7 +15,7 @@ namespace MacroNex.Tests.Application;
 public class ExecutionServicePropertyTests
 {
     [Property]
-    // Feature: macro-studio, Property 4: Execution State Management
+    // Feature: macronex, Property 4: Execution State Management
     public bool ExecutionStateManagement(NonEmptyString scriptName, PositiveInt commandCount)
     {
         var name = scriptName.Get.Trim();

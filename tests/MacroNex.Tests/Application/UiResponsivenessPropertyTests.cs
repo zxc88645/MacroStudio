@@ -1,4 +1,4 @@
-﻿using FsCheck;
+using FsCheck;
 using FsCheck.Xunit;
 using MacroNex.Application.Services;
 using MacroNex.Domain.Entities;
@@ -12,7 +12,7 @@ namespace MacroNex.Tests.Application;
 public class UiResponsivenessPropertyTests
 {
     [Property]
-    // Feature: macro-studio, Property 8: UI Responsiveness and Functionality
+    // Feature: macronex, Property 8: UI Responsiveness and Functionality
     public bool ExecutionService_EventHandlersThrowing_AreSwallowed(NonEmptyString scriptName)
     {
         var name = scriptName.Get.Trim();
@@ -46,7 +46,7 @@ public class UiResponsivenessPropertyTests
     }
 
     [Property]
-    // Feature: macro-studio, Property 8: UI Responsiveness and Functionality
+    // Feature: macronex, Property 8: UI Responsiveness and Functionality
     public bool LoggingService_LogEntryCreatedHandlerThrowing_DoesNotBreakLogging(NonEmptyString message)
     {
         var msg = message.Get.Trim();
