@@ -1,0 +1,170 @@
+﻿<Window x:Class="MacroNex.Presentation.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:MacroNex.Presentation"
+        xmlns:vm="clr-namespace:MacroNex.Presentation.ViewModels"
+        xmlns:views="clr-namespace:MacroNex.Presentation.Views"
+        xmlns:conv="clr-namespace:MacroNex.Presentation.Converters"
+        xmlns:val="clr-namespace:MacroNex.Domain.ValueObjects;assembly=MacroNex.Domain"
+        mc:Ignorable="d"
+        Title="{DynamicResource Ui.App.Title}" Height="1200" Width="1600"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource Bg0}">
+    <Window.Resources>
+        <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
+            <views:SettingsView/>
+        </DataTemplate>
+        <conv:ArduinoConnectionStateBrushConverter x:Key="ArduinoConnectionStateBrushConverter" />
+    </Window.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="220"/>
+        </Grid.RowDefinitions>
+
+        <!-- Top bar -->
+        <Border Grid.Row="0" Background="{DynamicResource Bg1}" Padding="14">
+            <DockPanel LastChildFill="True">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock FontSize="18" FontWeight="SemiBold" Text="{DynamicResource Ui.Topbar.Title}" />
+                    <TextBlock Margin="10,3,0,0" Foreground="{DynamicResource TextMutedBrush}" Text="{DynamicResource Ui.Topbar.Subtitle}" />
+                    <!-- Arduino 連接狀態燈 -->
+                    <StackPanel Orientation="Horizontal" Margin="20,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="Arduino:" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="{DynamicResource TextMutedBrush}" FontSize="12" />
+                        <Ellipse Width="10" Height="10"
+                                 ToolTip="{Binding Recording.ArduinoConnectionState, StringFormat='Arduino 連接狀態: {0}'}"
+                                 Fill="{Binding Recording.ArduinoConnectionState, Converter={StaticResource ArduinoConnectionStateBrushConverter}}" />
+                    </StackPanel>
+                </StackPanel>
+                <Button DockPanel.Dock="Right"
+                        Margin="12,0,0,0"
+                        Style="{DynamicResource DangerButton}"
+                        Visibility="{Binding IsKillSwitchActive, Converter={StaticResource BoolToVisibility}}"
+                        Command="{Binding ResetKillSwitchCommand}"
+                        Content="{DynamicResource Ui.Topbar.ResetKillSwitch}" />
+                <TextBlock DockPanel.Dock="Right"
+                           Foreground="{DynamicResource TextMutedBrush}"
+                           VerticalAlignment="Center"
+                           Text="{Binding StatusText}" />
+            </DockPanel>
+        </Border>
+
+        <!-- Main tabs -->
+        <TabControl Grid.Row="1" Margin="14" Background="{DynamicResource Bg0}" BorderBrush="{DynamicResource BorderBrushSoft}">
+            <TabItem Header="{DynamicResource Ui.Tab.Workspace}">
+                <!-- Main content: scripts + commands + execution controls -->
+                <Grid Margin="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="320"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="320"/>
+                    </Grid.ColumnDefinitions>
+
+                    <views:ScriptListView Grid.Column="0"/>
+
+                    <views:CommandGridView Grid.Column="2"/>
+
+                    <!-- Recording + Execution -->
+                    <Grid Grid.Column="4">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <views:RecordingView Grid.Row="0" Margin="0,0,0,12"/>
+
+                        <!-- Execution controls -->
+                        <Border Grid.Row="1" Style="{DynamicResource CardBorder}" Padding="14">
+                            <DockPanel LastChildFill="True">
+                                <StackPanel DockPanel.Dock="Top" Orientation="Vertical">
+                                    <TextBlock FontWeight="SemiBold" Text="{DynamicResource Ui.Execution.Title}" Margin="0,0,0,8"/>
+
+                                    <TextBlock Foreground="{DynamicResource TextMutedBrush}" Text="{Binding ExecutionControls.State}" Margin="0,0,0,8"/>
+
+                                    <ProgressBar Height="14"
+                                                 Minimum="0" Maximum="100"
+                                                 Value="{Binding ExecutionControls.CompletionPercentage}" />
+                                    <TextBlock Margin="0,6,0,8"
+                                               Foreground="{DynamicResource TextMutedBrush}"
+                                               Text="{Binding ExecutionControls.CurrentCommandIndex}"/>
+
+                                    <WrapPanel Margin="0,6,0,8">
+                                        <Button Content="{DynamicResource Ui.Execution.Start}" Width="72" Margin="0,0,8,8" Style="{DynamicResource PrimaryButton}" Command="{Binding ExecutionControls.StartCommand}"/>
+                                        <Button Content="{DynamicResource Ui.Execution.Pause}" Width="72" Margin="0,0,8,8" Command="{Binding ExecutionControls.PauseCommand}"/>
+                                        <Button Content="{DynamicResource Ui.Execution.Resume}" Width="72" Margin="0,0,8,8" Command="{Binding ExecutionControls.ResumeCommand}"/>
+                                        <Button Content="{DynamicResource Ui.Execution.Stop}" Width="72" Margin="0,0,8,8" Command="{Binding ExecutionControls.StopCommand}"/>
+                                        <Button Content="{DynamicResource Ui.Execution.Step}" Width="72" Margin="0,0,8,8" Command="{Binding ExecutionControls.StepCommand}"/>
+                                        <Button Content="{DynamicResource Ui.Execution.Terminate}" Width="88" Margin="0,0,8,8" Style="{DynamicResource DangerButton}" Command="{Binding ExecutionControls.TerminateCommand}"/>
+                                    </WrapPanel>
+
+                                    <GroupBox Header="{DynamicResource Ui.Execution.Options}" Padding="10" BorderBrush="{DynamicResource BorderBrushSoft}" Foreground="{DynamicResource TextMutedBrush}">
+                                        <StackPanel>
+                                            <CheckBox Content="{DynamicResource Ui.Execution.ShowCountdown}" IsChecked="{Binding ExecutionControls.ShowCountdown}" />
+                                            <DockPanel Margin="0,6,0,0">
+                                                <TextBlock Width="120" Text="{DynamicResource Ui.Execution.CountdownSeconds}" VerticalAlignment="Center"/>
+                                                <TextBox Text="{Binding ExecutionControls.CountdownSeconds, UpdateSourceTrigger=PropertyChanged}" />
+                                            </DockPanel>
+                                            <TextBlock Foreground="{DynamicResource DangerBrush}" Margin="0,10,0,0" Text="{Binding ExecutionControls.LastError}" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </GroupBox>
+                                </StackPanel>
+                            </DockPanel>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="{DynamicResource Ui.Tab.Settings}">
+                <ContentPresenter Content="{Binding Settings}"/>
+            </TabItem>
+
+            <TabItem Header="偵錯">
+                <views:DebugView DataContext="{Binding Debug}"/>
+            </TabItem>
+        </TabControl>
+
+        <!-- Logging panel -->
+        <Border Grid.Row="2" Margin="14" Style="{DynamicResource CardBorder}" Padding="14">
+            <DockPanel LastChildFill="True">
+                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                    <TextBlock FontWeight="SemiBold" Text="{DynamicResource Ui.Logs.Title}" />
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                        <Button Content="{DynamicResource Ui.Logs.Refresh}" Margin="0,0,8,0" Command="{Binding Logging.RefreshCommand}" />
+                        <Button Content="{DynamicResource Ui.Logs.Clear}" Margin="0,0,8,0" Command="{Binding Logging.ClearCommand}" />
+                        <Button Content="{DynamicResource Ui.Logs.Copy}" Margin="0,0,8,0" Command="{Binding Logging.CopyCommand}" />
+                        <Button Content="{DynamicResource Ui.Logs.Export}" Style="{DynamicResource PrimaryButton}" Command="{Binding Logging.ExportCommand}" />
+                    </StackPanel>
+                </DockPanel>
+
+                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                    <TextBox Width="260" Margin="0,0,8,0"
+                             Text="{Binding Logging.SearchText, UpdateSourceTrigger=PropertyChanged}"
+                             ToolTip="{DynamicResource Ui.Logs.SearchTooltip}"/>
+                    <TextBox Width="80" Margin="0,0,8,0"
+                             Text="{Binding Logging.MaxResults, UpdateSourceTrigger=PropertyChanged}"
+                             ToolTip="{DynamicResource Ui.Logs.MaxResultsTooltip}"/>
+                </DockPanel>
+
+                <ListBox x:Name="LogsListBox" ItemsSource="{Binding Logging.Entries}" BorderThickness="0">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <DockPanel Margin="0,2">
+                                <Border Width="10" Height="10" CornerRadius="5"
+                                        Margin="0,4,10,0"
+                                        Background="{Binding Level, Converter={StaticResource LogLevelBrushConverter}}"/>
+                                <TextBlock Text="{Binding ., Converter={StaticResource LogEntryDisplayConverter}}"
+                                           Foreground="{DynamicResource TextBrush}"
+                                           TextWrapping="Wrap"/>
+                            </DockPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+        </Border>
+    </Grid>
+</Window>

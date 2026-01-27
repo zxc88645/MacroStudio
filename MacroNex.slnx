@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MacroNex.Application/MacroNex.Application.csproj" />
+    <Project Path="src/MacroNex.Domain/MacroNex.Domain.csproj" />
+    <Project Path="src/MacroNex.Infrastructure/MacroNex.Infrastructure.csproj" />
+    <Project Path="src/MacroNex.Presentation/MacroNex.Presentation.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MacroNex.Tests/MacroNex.Tests.csproj" />
+  </Folder>
+</Solution>

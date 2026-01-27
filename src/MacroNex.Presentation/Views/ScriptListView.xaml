@@ -1,0 +1,92 @@
+﻿<UserControl x:Class="MacroNex.Presentation.Views.ScriptListView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:conv="clr-namespace:MacroNex.Presentation.Converters"
+             mc:Ignorable="d"
+             d:DesignHeight="450" d:DesignWidth="320">
+    <UserControl.Resources>
+        <conv:HotkeyDisplayConverter x:Key="HotkeyDisplayConverter"/>
+    </UserControl.Resources>
+    <Border Style="{DynamicResource CardBorder}" Padding="14">
+        <DockPanel LastChildFill="True">
+            <StackPanel DockPanel.Dock="Top" Orientation="Vertical" Margin="0,0,0,8">
+                <TextBlock FontWeight="SemiBold" Text="{DynamicResource Ui.Scripts.Title}" Margin="0,0,0,8"/>
+                <DockPanel>
+                    <TextBox Width="220" Margin="0,0,8,0"
+                             Text="{Binding ScriptList.SearchText, UpdateSourceTrigger=PropertyChanged}"
+                             ToolTip="{DynamicResource Ui.Scripts.SearchTooltip}"/>
+                    <Button Content="{DynamicResource Ui.Button.Search}" Style="{DynamicResource PrimaryButton}" Command="{Binding ScriptList.ApplySearchCommand}" />
+                </DockPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                    <Button Content="{DynamicResource Ui.Button.New}" Width="72" Margin="0,0,8,0" Style="{DynamicResource PrimaryButton}" Command="{Binding ScriptList.CreateScriptCommand}" />
+                    <Button Content="{DynamicResource Ui.Button.Delete}" Width="72" Command="{Binding ScriptList.DeleteSelectedCommand}" />
+                    <Button Content="{DynamicResource Ui.Button.Refresh}" Width="72" Margin="8,0,0,0" Command="{Binding ScriptList.RefreshCommand}" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                    <Button Content="{DynamicResource Ui.Button.Import}" Width="72" Margin="0,0,8,0" Command="{Binding ScriptList.ImportCommand}" />
+                    <Button Content="{DynamicResource Ui.Button.Export}" Width="72" Margin="0,0,8,0" Command="{Binding ScriptList.ExportSelectedCommand}" />
+                    <Button Content="{DynamicResource Ui.Scripts.SetHotkey}" Width="90" Command="{Binding ScriptList.SetHotkeyCommand}" />
+                </StackPanel>
+            </StackPanel>
+
+            <ListBox ItemsSource="{Binding ScriptList.Scripts}"
+                     SelectedItem="{Binding ScriptList.SelectedScript, Mode=TwoWay}"
+                     BorderThickness="0">
+                <ListBox.Resources>
+                    <Style TargetType="{x:Type ContextMenu}">
+                        <Setter Property="Background" Value="{StaticResource Surface}"/>
+                        <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                        <Setter Property="BorderBrush" Value="{StaticResource ScrollThumbBrush}"/>
+                        <Setter Property="BorderThickness" Value="1"/>
+                    </Style>
+                    <Style TargetType="{x:Type MenuItem}">
+                        <Setter Property="Background" Value="{StaticResource Surface}"/>
+                        <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                        <Setter Property="Padding" Value="10,4"/>
+                        <Setter Property="BorderThickness" Value="0"/>
+                        <Style.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter Property="Background" Value="{StaticResource Bg1}"/>
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </ListBox.Resources>
+                <ListBox.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="{DynamicResource Ui.Scripts.ContextMenu.Rename}" 
+                                  Command="{Binding ScriptList.RenameSelectedCommand}" />
+                        <Separator/>
+                        <MenuItem Header="{DynamicResource Ui.Scripts.ContextMenu.SetHotkey}" 
+                                  Command="{Binding ScriptList.SetHotkeyCommand}" />
+                        <MenuItem Header="{DynamicResource Ui.Scripts.ContextMenu.Export}" 
+                                  Command="{Binding ScriptList.ExportSelectedCommand}" />
+                        <Separator/>
+                        <MenuItem Header="{DynamicResource Ui.Scripts.ContextMenu.Delete}" 
+                                  Command="{Binding ScriptList.DeleteSelectedCommand}" />
+                    </ContextMenu>
+                </ListBox.ContextMenu>
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding Name}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <TextBlock Foreground="{DynamicResource TextMutedBrush}" 
+                                       FontSize="11"
+                                       VerticalAlignment="Center">
+                                <TextBlock.Text>
+                                    <Binding Path="TriggerHotkey">
+                                        <Binding.Converter>
+                                            <StaticResource ResourceKey="HotkeyDisplayConverter"/>
+                                        </Binding.Converter>
+                                    </Binding>
+                                </TextBlock.Text>
+                            </TextBlock>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </DockPanel>
+    </Border>
+</UserControl>
+

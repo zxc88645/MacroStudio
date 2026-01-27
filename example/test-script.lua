@@ -1,5 +1,5 @@
--- MacroStudio Lua 測試腳本
--- 展示變數、算術、迴圈、條件判斷與 API 呼叫
+-- MacroNex Lua 測試?�本
+-- 展示變數?��?術、迴?�、�?件判?��? API ?�叫
 
 -- 定義變數
 local startX = 100
@@ -7,11 +7,11 @@ local startY = 200
 local stepSize = 50
 local delayMs = 100
 
--- 移動到起始位置
+-- 移�??�起始�?�?
 move(startX, startY)
 msleep(delayMs)
 
--- 測試算術運算：畫一個正方形
+-- 測試算�??��?：畫一?�正?�形
 for i = 1, 4 do
     local x = startX + (i * stepSize)
     local y = startY + (i * stepSize)
@@ -19,7 +19,7 @@ for i = 1, 4 do
     msleep(delayMs)
 end
 
--- 測試條件判斷
+-- 測試條件?�斷
 local clickCount = 3
 if clickCount > 0 then
     for i = 1, clickCount do
@@ -28,34 +28,34 @@ if clickCount > 0 then
     end
 end
 
--- 測試文字輸入
+-- 測試?��?輸入
 type_text('Hello from Lua!')
 msleep(500)
 
--- 測試 sleep（秒）與 msleep（毫秒）
-sleep(0.5)  -- 0.5 秒
-msleep(250) -- 250 毫秒
+-- 測試 sleep（�?）�? msleep（毫秒�?
+sleep(0.5)  -- 0.5 �?
+msleep(250) -- 250 毫�?
 
--- 測試滑鼠按鈕
+-- 測試滑�??��?
 mouse_down('left')
 msleep(50)
 mouse_release('left')
 
--- 測試鍵盤按鍵
+-- 測試?�盤?�鍵
 key_down('VK_A')
 msleep(50)
 key_release('VK_A')
 
--- 複雜範例：根據變數決定行為
+-- 複�?範�?：根?��??�決定�???
 local mode = 1
 if mode == 1 then
-    -- 模式 1：快速點擊
+    -- 模�? 1：快?��???
     for i = 1, 5 do
         mouse_click('left')
         msleep(100)
     end
 elseif mode == 2 then
-    -- 模式 2：移動模式
+    -- 模�? 2：移?�模�?
     local positions = {
         {x = 300, y = 300},
         {x = 400, y = 400},
@@ -67,4 +67,4 @@ elseif mode == 2 then
     end
 end
 
-print('腳本執行完成！')
+print('?�本?��?完�?�?)

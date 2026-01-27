@@ -14,9 +14,9 @@ bld/
 [Ll]og/
 [Ll]ogs/
 
-# Allow Win32 source folder under MacroStudio.Infrastructure (keep ignoring other Win32 build output dirs)
-!src/MacroStudio.Infrastructure/Win32/
-!src/MacroStudio.Infrastructure/Win32/**
+# Allow Win32 source folder under MacroNex.Infrastructure (keep ignoring other Win32 build output dirs)
+!src/MacroNex.Infrastructure/Win32/
+!src/MacroNex.Infrastructure/Win32/**
 
 # Visual Studio 2015/2017 cache/options directory
 .vs/

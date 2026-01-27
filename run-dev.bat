@@ -1,6 +1,6 @@
 @echo off
-REM Fast development build and run for MacroStudio
+REM Fast development build and run for MacroNex
 cd /d "%~dp0"
-echo Building and running MacroStudio in Debug mode...
-dotnet run --project src\MacroStudio.Presentation\MacroStudio.Presentation.csproj -c Debug
+echo Building and running MacroNex in Debug mode...
+dotnet run --project src\MacroNex.Presentation\MacroNex.Presentation.csproj -c Debug
 pause

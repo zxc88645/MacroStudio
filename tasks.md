@@ -1,8 +1,8 @@
-# Implementation Plan: Macro Studio
+# Implementation Plan: MacroNex
 
 ## Overview
 
-This implementation plan breaks down the WPF Macro Studio development into discrete, incremental tasks following hexagonal architecture principles. Each task builds upon previous work, ensuring continuous integration and early validation of core functionality. The plan emphasizes safety-first implementation with comprehensive testing at each stage.
+This implementation plan breaks down the WPF MacroNex development into discrete, incremental tasks following hexagonal architecture principles. Each task builds upon previous work, ensuring continuous integration and early validation of core functionality. The plan emphasizes safety-first implementation with comprehensive testing at each stage.
 
 ## Tasks
 

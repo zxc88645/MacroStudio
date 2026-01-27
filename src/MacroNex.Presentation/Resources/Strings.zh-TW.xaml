@@ -1,0 +1,150 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+  <!-- App -->
+  <sys:String x:Key="Ui.App.Title">MacroNex</sys:String>
+
+  <!-- Tabs -->
+  <sys:String x:Key="Ui.Tab.Workspace">工作區</sys:String>
+  <sys:String x:Key="Ui.Tab.Settings">設定</sys:String>
+
+  <!-- Common buttons -->
+  <sys:String x:Key="Ui.Button.Change">變更</sys:String>
+  <sys:String x:Key="Ui.Button.ResetToDefault">重設為預設</sys:String>
+
+  <!-- Settings -->
+  <sys:String x:Key="Ui.Settings.Title">設定</sys:String>
+  <sys:String x:Key="Ui.Settings.LanguageLabel">介面語言</sys:String>
+  <sys:String x:Key="Ui.Settings.LanguageHint">切換後立即套用（部分文字可能需逐步補齊）。</sys:String>
+
+  <sys:String x:Key="Ui.Settings.RecordingHotkeys.Title">錄製快捷鍵</sys:String>
+  <sys:String x:Key="Ui.Settings.RecordingHotkeys.Description">以下為全域快捷鍵，切到其他視窗也能控制錄製。</sys:String>
+  <sys:String x:Key="Ui.Settings.RecordingHotkeys.Start">開始錄製</sys:String>
+  <sys:String x:Key="Ui.Settings.RecordingHotkeys.Pause">暫停錄製</sys:String>
+  <sys:String x:Key="Ui.Settings.RecordingHotkeys.Stop">停止錄製</sys:String>
+
+  <!-- MainWindow top bar -->
+  <sys:String x:Key="Ui.Topbar.Title">MacroNex</sys:String>
+  <sys:String x:Key="Ui.Topbar.Subtitle">桌面自動化</sys:String>
+  <sys:String x:Key="Ui.Topbar.ResetKillSwitch">重設緊急停止</sys:String>
+
+  <!-- Hotkey capture -->
+  <sys:String x:Key="Ui.HotkeyCapture.WindowTitle">設置熱鍵</sys:String>
+  <sys:String x:Key="Ui.HotkeyCapture.Title">設置腳本熱鍵</sys:String>
+  <sys:String x:Key="Ui.HotkeyCapture.Instruction">請按下您想要設置的按鍵或組合鍵</sys:String>
+  <sys:String x:Key="Ui.HotkeyCapture.Placeholder">請按下按鍵...</sys:String>
+  <sys:String x:Key="Ui.HotkeyCapture.TriggerModeLabel">觸發模式：</sys:String>
+  <sys:String x:Key="Ui.HotkeyCapture.TriggerMode.Once">僅一次</sys:String>
+  <sys:String x:Key="Ui.HotkeyCapture.TriggerMode.RepeatWhileHeld">按住時重複</sys:String>
+  <sys:String x:Key="Ui.HotkeyCapture.SwallowKeystroke">吞按鍵（不傳給前景應用）</sys:String>
+  <sys:String x:Key="Ui.Button.Clear">清除</sys:String>
+  <sys:String x:Key="Ui.Button.Cancel">取消</sys:String>
+  <sys:String x:Key="Ui.Button.Confirm">確認</sys:String>
+
+  <!-- Recording -->
+  <sys:String x:Key="Ui.Recording.Title">錄製</sys:String>
+  <sys:String x:Key="Ui.Recording.Start">開始</sys:String>
+  <sys:String x:Key="Ui.Recording.Stop">停止</sys:String>
+  <sys:String x:Key="Ui.Recording.Options">選項</sys:String>
+  <sys:String x:Key="Ui.Recording.RecordMouseMovements">記錄滑鼠移動</sys:String>
+  <sys:String x:Key="Ui.Recording.UseLowLevelMouseMove">使用低階滑鼠移動</sys:String>
+  <sys:String x:Key="Ui.Recording.UseRelativeMouseMove">使用相對移動</sys:String>
+  <sys:String x:Key="Ui.Recording.RecordMouseClicks">記錄滑鼠點擊</sys:String>
+  <sys:String x:Key="Ui.Recording.RecordKeyboardInput">記錄鍵盤輸入</sys:String>
+  <sys:String x:Key="Ui.Recording.FilterInjectedSystemEvents">過濾注入/系統事件</sys:String>
+  <sys:String x:Key="Ui.Recording.RecordedCountFormat">已錄製：{0}</sys:String>
+  <sys:String x:Key="Ui.Recording.SaveAsScript">另存為腳本</sys:String>
+  <sys:String x:Key="Ui.Recording.InsertIntoEditor">插入到編輯區</sys:String>
+  <sys:String x:Key="Ui.Recording.CopyScript">複製腳本</sys:String>
+
+  <!-- Countdown -->
+  <sys:String x:Key="Ui.Countdown.FocusWarningTitle">焦點提醒</sys:String>
+  <sys:String x:Key="Ui.Countdown.AutomationWillStartIn">自動化將於以下時間開始：</sys:String>
+
+  <!-- Script list -->
+  <sys:String x:Key="Ui.Scripts.Title">腳本</sys:String>
+  <sys:String x:Key="Ui.Scripts.SearchTooltip">搜尋腳本</sys:String>
+  <sys:String x:Key="Ui.Button.Search">搜尋</sys:String>
+  <sys:String x:Key="Ui.Button.New">新增</sys:String>
+  <sys:String x:Key="Ui.Button.Delete">刪除</sys:String>
+  <sys:String x:Key="Ui.Button.Refresh">重新整理</sys:String>
+  <sys:String x:Key="Ui.Button.Import">匯入</sys:String>
+  <sys:String x:Key="Ui.Button.Export">匯出</sys:String>
+  <sys:String x:Key="Ui.Scripts.SetHotkey">設置熱鍵</sys:String>
+
+  <!-- Script context menu -->
+  <sys:String x:Key="Ui.Scripts.ContextMenu.Rename">變更腳本名稱</sys:String>
+  <sys:String x:Key="Ui.Scripts.ContextMenu.SetHotkey">設定熱鍵</sys:String>
+  <sys:String x:Key="Ui.Scripts.ContextMenu.Export">匯出腳本</sys:String>
+  <sys:String x:Key="Ui.Scripts.ContextMenu.Delete">刪除腳本</sys:String>
+
+  <!-- Script editor -->
+  <sys:String x:Key="Ui.Editor.Title">腳本編輯器</sys:String>
+  <sys:String x:Key="Ui.Editor.AddSleep">新增延遲</sys:String>
+  <sys:String x:Key="Ui.Editor.AddMove">新增移動</sys:String>
+  <sys:String x:Key="Ui.Editor.AddMouse">新增滑鼠</sys:String>
+  <sys:String x:Key="Ui.Editor.AddText">新增文字</sys:String>
+  <sys:String x:Key="Ui.Editor.RemoveLast">移除最後一個</sys:String>
+  <sys:String x:Key="Ui.Editor.Mouse.LeftClick">左鍵點擊</sys:String>
+  <sys:String x:Key="Ui.Editor.Mouse.RightClick">右鍵點擊</sys:String>
+  <sys:String x:Key="Ui.Editor.Mouse.MiddleClick">中鍵點擊</sys:String>
+  <sys:String x:Key="Ui.Editor.SelectScriptHint">請先從左側選擇一個腳本，才能開始編輯。</sys:String>
+
+  <!-- Common dialogs -->
+  <sys:String x:Key="Ui.Dialog.Cancel">取消</sys:String>
+  <sys:String x:Key="Ui.Dialog.Ok">確定</sys:String>
+
+  <!-- Pick point -->
+  <sys:String x:Key="Ui.PickPoint.WindowTitle">選取位置</sys:String>
+  <sys:String x:Key="Ui.PickPoint.Title">選取滑鼠位置</sys:String>
+  <sys:String x:Key="Ui.PickPoint.Instruction">請把滑鼠移到目標位置，然後按 F2 以擷取目前座標。</sys:String>
+  <!-- Execution -->
+  <sys:String x:Key="Ui.Execution.Title">執行</sys:String>
+  <sys:String x:Key="Ui.Execution.Options">選項</sys:String>
+  <sys:String x:Key="Ui.Execution.Speed">速度</sys:String>
+  <sys:String x:Key="Ui.Execution.ShowCountdown">顯示倒數</sys:String>
+  <sys:String x:Key="Ui.Execution.CountdownSeconds">倒數（秒）</sys:String>
+  <sys:String x:Key="Ui.Execution.Start">開始</sys:String>
+  <sys:String x:Key="Ui.Execution.Pause">暫停</sys:String>
+  <sys:String x:Key="Ui.Execution.Resume">繼續</sys:String>
+  <sys:String x:Key="Ui.Execution.Stop">停止</sys:String>
+  <sys:String x:Key="Ui.Execution.Step">單步</sys:String>
+  <sys:String x:Key="Ui.Execution.Terminate">強制終止</sys:String>
+
+  <!-- Logs -->
+  <sys:String x:Key="Ui.Logs.Title">記錄</sys:String>
+  <sys:String x:Key="Ui.Logs.Refresh">重新整理</sys:String>
+  <sys:String x:Key="Ui.Logs.Clear">清除</sys:String>
+  <sys:String x:Key="Ui.Logs.Copy">複製</sys:String>
+  <sys:String x:Key="Ui.Logs.Export">匯出</sys:String>
+  <sys:String x:Key="Ui.Logs.SearchTooltip">搜尋記錄</sys:String>
+  <sys:String x:Key="Ui.Logs.MaxResultsTooltip">最大筆數</sys:String>
+
+  <!-- Status / messages (ViewModels) -->
+  <sys:String x:Key="Ui.Status.Ready">就緒</sys:String>
+  <sys:String x:Key="Ui.Status.LoadedScripts">已載入腳本</sys:String>
+  <sys:String x:Key="Ui.Status.ExecutingPrefix">正在執行：{0}</sys:String>
+  <sys:String x:Key="Ui.Status.Executing">執行中</sys:String>
+  <sys:String x:Key="Ui.Status.KillSwitchPrefix">緊急停止：{0}</sys:String>
+  <sys:String x:Key="Ui.Status.KillSwitchReset">已重設緊急停止</sys:String>
+
+  <sys:String x:Key="Ui.Recording.Status.NotRecording">未錄製</sys:String>
+  <sys:String x:Key="Ui.Recording.Status.Recording">錄製中…</sys:String>
+  <sys:String x:Key="Ui.Recording.Status.Paused">已暫停</sys:String>
+  <sys:String x:Key="Ui.Recording.Status.Stopped">已停止</sys:String>
+  <sys:String x:Key="Ui.Recording.Status.Error">錯誤</sys:String>
+  <sys:String x:Key="Ui.Recording.Pause">暫停</sys:String>
+  <sys:String x:Key="Ui.Recording.Resume">繼續</sys:String>
+  <sys:String x:Key="Ui.ErrorPrefix">錯誤：{0}</sys:String>
+
+  <sys:String x:Key="Ui.Dialog.SaveRecording.Title">儲存錄製</sys:String>
+  <sys:String x:Key="Ui.Dialog.SaveRecording.Subtitle">將目前錄製的命令另存為新的腳本。</sys:String>
+  <sys:String x:Key="Ui.Dialog.SaveRecording.Label">腳本名稱：</sys:String>
+  <sys:String x:Key="Ui.Dialog.SaveRecording.DefaultName">錄製的腳本</sys:String>
+
+  <!-- Rename dialog -->
+  <sys:String x:Key="Ui.Dialog.RenameScript.Title">變更腳本名稱</sys:String>
+  <sys:String x:Key="Ui.Dialog.RenameScript.Subtitle">請輸入新的腳本名稱。</sys:String>
+  <sys:String x:Key="Ui.Dialog.RenameScript.Label">腳本名稱：</sys:String>
+</ResourceDictionary>
+

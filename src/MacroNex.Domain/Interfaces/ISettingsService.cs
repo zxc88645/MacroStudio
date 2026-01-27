@@ -1,0 +1,68 @@
+using MacroNex.Domain.ValueObjects;
+
+namespace MacroNex.Domain.Interfaces;
+
+/// <summary>
+/// Domain service interface for application configuration persistence.
+/// </summary>
+public interface ISettingsService
+{
+    Task<AppSettings> LoadAsync();
+    Task SaveAsync(AppSettings settings);
+}
+
+/// <summary>
+/// Application settings persisted to disk.
+/// </summary>
+public class AppSettings
+{
+    /// <summary>
+    /// UI language / culture name (e.g., "zh-TW", "en-US").
+    /// </summary>
+    public string? UiLanguage { get; set; }
+
+    public bool ShowCountdown { get; set; } = true;
+    public double CountdownSeconds { get; set; } = 3.0;
+
+    /// <summary>
+    /// Global input mode for recording and execution (HighLevel, LowLevel, or Hardware).
+    /// </summary>
+    public InputMode GlobalInputMode { get; set; } = InputMode.HighLevel;
+
+    public ExecutionLimits ExecutionLimits { get; set; } = ExecutionLimits.Default();
+
+    // Recording control hotkeys (global). Defaults: F9 / F11 / F12.
+    public HotkeyDefinition? RecordingStartHotkey { get; set; }
+    public HotkeyDefinition? RecordingPauseHotkey { get; set; }
+    public HotkeyDefinition? RecordingStopHotkey { get; set; }
+
+    public static AppSettings Default()
+    {
+        var s = new AppSettings();
+        s.EnsureDefaults();
+        return s;
+    }
+
+    /// <summary>
+    /// Ensures any missing settings values are populated with sensible defaults.
+    /// This provides backward compatibility for older settings.json versions.
+    /// </summary>
+    public void EnsureDefaults()
+    {
+        // UI language default: Traditional Chinese.
+        if (string.IsNullOrWhiteSpace(UiLanguage)) UiLanguage = "zh-TW";
+
+        // Legacy settings.json may not have these fields.
+        RecordingStartHotkey ??= HotkeyDefinition.Create("Recording Start", HotkeyModifiers.None, VirtualKey.VK_F9, HotkeyTriggerMode.Once);
+        RecordingPauseHotkey ??= HotkeyDefinition.Create("Recording Pause", HotkeyModifiers.None, VirtualKey.VK_F11, HotkeyTriggerMode.Once);
+        RecordingStopHotkey ??= HotkeyDefinition.Create("Recording Stop", HotkeyModifiers.None, VirtualKey.VK_F12, HotkeyTriggerMode.Once);
+
+        ExecutionLimits ??= ExecutionLimits.Default();
+        if (CountdownSeconds <= 0) CountdownSeconds = 3.0;
+        
+        // Default to HighLevel if not set
+        if (!Enum.IsDefined(typeof(InputMode), GlobalInputMode))
+            GlobalInputMode = InputMode.HighLevel;
+    }
+}
+
