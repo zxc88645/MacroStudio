@@ -96,11 +96,13 @@ public class Win32InputSimulator : IInputSimulator
                 var newX = currentPoint.X + deltaX;
                 var newY = currentPoint.Y + deltaY;
 
-                // Clamp to screen bounds
-                var screenWidth = GetSystemMetrics(SM_CXSCREEN);
-                var screenHeight = GetSystemMetrics(SM_CYSCREEN);
-                newX = Math.Clamp(newX, 0, screenWidth - 1);
-                newY = Math.Clamp(newY, 0, screenHeight - 1);
+                // Clamp to virtual desktop bounds (multi-monitor support)
+                var virtualLeft = GetSystemMetrics(SM_XVIRTUALSCREEN);
+                var virtualTop = GetSystemMetrics(SM_YVIRTUALSCREEN);
+                var virtualWidth = GetSystemMetrics(SM_CXVIRTUALSCREEN);
+                var virtualHeight = GetSystemMetrics(SM_CYVIRTUALSCREEN);
+                newX = Math.Clamp(newX, virtualLeft, virtualLeft + virtualWidth - 1);
+                newY = Math.Clamp(newY, virtualTop, virtualTop + virtualHeight - 1);
 
                 if (!SetCursorPos(newX, newY))
                 {
@@ -234,8 +236,8 @@ public class Win32InputSimulator : IInputSimulator
         {
             lock (_lockObject)
             {
-                // ä½¿ç”¨ scan code + KEYEVENTF_SCANCODE ä¾†æ¨¡?¬å¯¦é«”éµ?¤è¼¸?¥ï?
-                // ?ä??Šæˆ²å°é€™ç¨®?¹å??„æ”¯?´æ?æ¯”å?ä½¿ç”¨?›æ“¬?µç¢¼?´å¥½??
+                // ä½¿ç”¨ scan code + KEYEVENTF_SCANCODE ä¾†æ¨¡?ï¿½å¯¦é«”éµ?ï¿½è¼¸?ï¿½ï¿½?
+                // ?ï¿½ï¿½??ï¿½æˆ²å°é€™ç¨®?ï¿½ï¿½??ï¿½æ”¯?ï¿½ï¿½?æ¯”ï¿½?ä½¿ç”¨?ï¿½æ“¬?ï¿½ç¢¼?ï¿½å¥½??
                 var (scanCode, flags) = GetScanCodeAndFlags((uint)key);
 
                 var input = new INPUT
@@ -245,7 +247,7 @@ public class Win32InputSimulator : IInputSimulator
                     {
                         ki = new KEYBDINPUT
                         {
-                            // ä½¿ç”¨ scan code æ¨¡å??‚ï?wVk ä¸€?¬è¨­??0ï¼Œç”± wScan + dwFlags æ±ºå?å¯¦é??µã€?
+                            // ä½¿ç”¨ scan code æ¨¡ï¿½??ï¿½ï¿½?wVk ä¸€?ï¿½è¨­??0ï¼Œç”± wScan + dwFlags æ±ºï¿½?å¯¦ï¿½??ï¿½ï¿½?
                             wVk = 0,
                             wScan = scanCode,
                             dwFlags = flags | (isDown ? 0 : KEYEVENTF_KEYUP),
@@ -655,19 +657,19 @@ public class Win32InputSimulator : IInputSimulator
     }
 
     /// <summary>
-    /// ?¹æ??›æ“¬?µå?å¾—å??‰ç? scan code ?‡å?è¦ç??—æ? (å¦?EXTENDEDKEY)ï¼?
-    /// ä¸¦å?ä¸?KEYEVENTF_SCANCODE è®?SendInput ä»¥æ??ç¢¼æ¨¡å??å‡º??
+    /// ?ï¿½ï¿½??ï¿½æ“¬?ï¿½ï¿½?å¾—ï¿½??ï¿½ï¿½? scan code ?ï¿½ï¿½?è¦ï¿½??ï¿½ï¿½? (ï¿½?EXTENDEDKEY)ï¿½?
+    /// ä¸¦ï¿½?ï¿½?KEYEVENTF_SCANCODE ï¿½?SendInput ä»¥ï¿½??ï¿½ç¢¼æ¨¡ï¿½??ï¿½å‡º??
     /// </summary>
     private static (ushort scanCode, uint flags) GetScanCodeAndFlags(uint virtualKey)
     {
-        // ä½¿ç”¨?®å??µç›¤?ç½®ä¾†å?è½‰æ?
+        // ä½¿ç”¨?ï¿½ï¿½??ï¿½ç›¤?ï¿½ç½®ä¾†ï¿½?è½‰ï¿½?
         var layout = GetKeyboardLayout(0);
         var scanCode = (ushort)MapVirtualKeyEx(virtualKey, MAPVK_VK_TO_VSC, layout);
 
         uint flags = KEYEVENTF_SCANCODE;
 
-        // ?ä??µï?ä¾‹å??¹å??µã€Insert?Delete?Home?End?PageUp/Down ç­‰ï??€è¦?EXTENDEDKEY
-        // ?™è£¡?¨å¸¸è¦‹ç? VK ?¼å?ç°¡å–®?¤æ–·ï¼›è‹¥?ªå‘½ä¸­å??ªä½¿?¨æ??ç¢¼??
+        // ?ï¿½ï¿½??ï¿½ï¿½?ä¾‹ï¿½??ï¿½ï¿½??ï¿½ã€Insert?ï¿½Delete?ï¿½Home?ï¿½End?ï¿½PageUp/Down ç­‰ï¿½??ï¿½ï¿½?EXTENDEDKEY
+        // ?ï¿½è£¡?ï¿½å¸¸è¦‹ï¿½? VK ?ï¿½ï¿½?ç°¡å–®?ï¿½æ–·ï¼›è‹¥?ï¿½å‘½ä¸­ï¿½??ï¿½ä½¿?ï¿½ï¿½??ï¿½ç¢¼??
         switch (virtualKey)
         {
             // ç®­é ­??
@@ -675,7 +677,7 @@ public class Win32InputSimulator : IInputSimulator
             case 0x26: // VK_UP
             case 0x27: // VK_RIGHT
             case 0x28: // VK_DOWN
-            // ?¶ä?å¸¸è? extended ??
+            // ?ï¿½ï¿½?å¸¸ï¿½? extended ??
             case 0x21: // VK_PRIOR (Page Up)
             case 0x22: // VK_NEXT (Page Down)
             case 0x23: // VK_END
