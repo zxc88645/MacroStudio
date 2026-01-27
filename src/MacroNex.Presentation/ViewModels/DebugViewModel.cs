@@ -510,6 +510,9 @@ public partial class DebugViewModel : ObservableObject
     {
         if (!data.IsValid) return "";
 
+        var sb = new System.Text.StringBuilder();
+
+        // 顯示平均比例
         var avgRatioX = data.PointsX.Count > 0
             ? data.PointsX.Where(p => p.HidDelta != 0).Average(p => p.ActualPixelDelta / p.HidDelta)
             : 1.0;
@@ -517,7 +520,45 @@ public partial class DebugViewModel : ObservableObject
             ? data.PointsY.Where(p => p.HidDelta != 0).Average(p => p.ActualPixelDelta / p.HidDelta)
             : 1.0;
 
-        return $"Pixel_X ≈ HID_ΔX × {avgRatioX:F3}\nPixel_Y ≈ HID_ΔY × {avgRatioY:F3}\n(非線性查找表插值)";
+        sb.AppendLine($"平均比例: X={avgRatioX:F3}, Y={avgRatioY:F3}");
+
+        // 顯示多項式模型（如果有）
+        if (data.PolynomialCoefficientsX.Length >= 2)
+        {
+            sb.Append("X 軸模型: HID = ");
+            sb.Append(FormatPolynomial(data.PolynomialCoefficientsX));
+            sb.AppendLine();
+        }
+        if (data.PolynomialCoefficientsY.Length >= 2)
+        {
+            sb.Append("Y 軸模型: HID = ");
+            sb.Append(FormatPolynomial(data.PolynomialCoefficientsY));
+            sb.AppendLine();
+        }
+
+        // 顯示模式
+        string mode = data.HasMouseAcceleration ? "非線性（滑鼠加速）" : "線性";
+        sb.Append($"模式: {mode}");
+
+        return sb.ToString();
+    }
+
+    private static string FormatPolynomial(double[] coefficients)
+    {
+        if (coefficients.Length == 0) return "N/A";
+        
+        var terms = new List<string>();
+        
+        if (Math.Abs(coefficients[0]) > 0.001)
+            terms.Add($"{coefficients[0]:F2}");
+        
+        if (coefficients.Length > 1 && Math.Abs(coefficients[1]) > 0.001)
+            terms.Add($"{coefficients[1]:F3}×P");
+        
+        if (coefficients.Length > 2 && Math.Abs(coefficients[2]) > 0.00001)
+            terms.Add($"{coefficients[2]:F5}×P²");
+
+        return terms.Count > 0 ? string.Join(" + ", terms) : "0";
     }
 
     [RelayCommand(CanExecute = nameof(CanStartCalibration))]
@@ -732,13 +773,19 @@ public partial class DebugViewModel : ObservableObject
 
     private async Task RunCalibrationAsync(CancellationToken cancellationToken)
     {
-        // Test deltas for calibration (both positive values, we'll test both directions)
-        int[] testDeltas = { 5, 10, 20, 30, 50, 75, 100, 150, 200, 300 };
+        // 智能測試點分布：
+        // - 小範圍密集（捕捉低速非線性）
+        // - 中範圍適中
+        // - 大範圍稀疏（驗證線性區域）
+        int[] testDeltas = { 3, 5, 8, 12, 18, 25, 35, 50, 70, 100, 150, 200 };
         
-        var pointsX = new List<CalibrationPoint>();
-        var pointsY = new List<CalibrationPoint>();
+        // 每個點採樣次數（取中位數減少噪音）
+        const int SamplesPerPoint = 3;
+        
+        var rawPointsX = new List<(int delta, List<double> samples)>();
+        var rawPointsY = new List<(int delta, List<double> samples)>();
 
-        int totalSteps = testDeltas.Length * 4; // X+, X-, Y+, Y- for each delta
+        int totalSteps = testDeltas.Length * 2 * SamplesPerPoint;
         int currentStep = 0;
 
         // Get screen center for resetting cursor position
@@ -747,77 +794,84 @@ public partial class DebugViewModel : ObservableObject
         int centerX = screenWidth / 2;
         int centerY = screenHeight / 2;
 
+        // Phase 1: 收集多次採樣數據
+        CalibrationStatus = "階段 1/3：收集採樣數據...";
+        
         foreach (var delta in testDeltas)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            var samplesXPos = new List<double>();
+            var samplesXNeg = new List<double>();
+            var samplesYPos = new List<double>();
+            var samplesYNeg = new List<double>();
 
-            // Test X+ direction
-            CalibrationStatus = $"測試 X 軸正向移動 (HID Δ={delta})...";
-            var resultXPos = await TestSingleCalibrationPointAsync(delta, 0, centerX, centerY, cancellationToken);
-            if (resultXPos.HasValue)
+            for (int sample = 0; sample < SamplesPerPoint; sample++)
             {
-                pointsX.Add(new CalibrationPoint { HidDelta = delta, ActualPixelDelta = resultXPos.Value });
-                AddCalibrationPointDisplay(delta, resultXPos.Value, "X+");
-            }
-            currentStep++;
-            CalibrationProgress = (int)(currentStep * 100.0 / totalSteps);
+                cancellationToken.ThrowIfCancellationRequested();
 
-            // Test X- direction
-            cancellationToken.ThrowIfCancellationRequested();
-            CalibrationStatus = $"測試 X 軸負向移動 (HID Δ={-delta})...";
-            var resultXNeg = await TestSingleCalibrationPointAsync(-delta, 0, centerX, centerY, cancellationToken);
-            if (resultXNeg.HasValue)
-            {
-                // Store absolute values for the lookup table
-                var absResult = Math.Abs(resultXNeg.Value);
-                // Average with positive result if available
-                var existingPoint = pointsX.FirstOrDefault(p => p.HidDelta == delta);
-                if (existingPoint != null)
-                {
-                    existingPoint.ActualPixelDelta = (existingPoint.ActualPixelDelta + absResult) / 2;
-                }
-                AddCalibrationPointDisplay(-delta, resultXNeg.Value, "X-");
-            }
-            currentStep++;
-            CalibrationProgress = (int)(currentStep * 100.0 / totalSteps);
+                // Test X axis (both directions)
+                CalibrationStatus = $"測試 X 軸 (HID Δ={delta}) - 採樣 {sample + 1}/{SamplesPerPoint}...";
+                
+                var resultXPos = await TestSingleCalibrationPointAsync(delta, 0, centerX, centerY, cancellationToken);
+                if (resultXPos.HasValue && resultXPos.Value > 0)
+                    samplesXPos.Add(resultXPos.Value);
+                currentStep++;
+                
+                var resultXNeg = await TestSingleCalibrationPointAsync(-delta, 0, centerX, centerY, cancellationToken);
+                if (resultXNeg.HasValue)
+                    samplesXNeg.Add(Math.Abs(resultXNeg.Value));
 
-            // Test Y+ direction
-            cancellationToken.ThrowIfCancellationRequested();
-            CalibrationStatus = $"測試 Y 軸正向移動 (HID Δ={delta})...";
-            var resultYPos = await TestSingleCalibrationPointAsync(0, delta, centerX, centerY, cancellationToken);
-            if (resultYPos.HasValue)
-            {
-                pointsY.Add(new CalibrationPoint { HidDelta = delta, ActualPixelDelta = resultYPos.Value });
-                AddCalibrationPointDisplay(delta, resultYPos.Value, "Y+");
-            }
-            currentStep++;
-            CalibrationProgress = (int)(currentStep * 100.0 / totalSteps);
+                // Test Y axis (both directions)  
+                CalibrationStatus = $"測試 Y 軸 (HID Δ={delta}) - 採樣 {sample + 1}/{SamplesPerPoint}...";
+                
+                var resultYPos = await TestSingleCalibrationPointAsync(0, delta, centerX, centerY, cancellationToken);
+                if (resultYPos.HasValue && resultYPos.Value > 0)
+                    samplesYPos.Add(resultYPos.Value);
+                currentStep++;
+                
+                var resultYNeg = await TestSingleCalibrationPointAsync(0, -delta, centerX, centerY, cancellationToken);
+                if (resultYNeg.HasValue)
+                    samplesYNeg.Add(Math.Abs(resultYNeg.Value));
 
-            // Test Y- direction
-            cancellationToken.ThrowIfCancellationRequested();
-            CalibrationStatus = $"測試 Y 軸負向移動 (HID Δ={-delta})...";
-            var resultYNeg = await TestSingleCalibrationPointAsync(0, -delta, centerX, centerY, cancellationToken);
-            if (resultYNeg.HasValue)
-            {
-                var absResult = Math.Abs(resultYNeg.Value);
-                var existingPoint = pointsY.FirstOrDefault(p => p.HidDelta == delta);
-                if (existingPoint != null)
-                {
-                    existingPoint.ActualPixelDelta = (existingPoint.ActualPixelDelta + absResult) / 2;
-                }
-                AddCalibrationPointDisplay(-delta, resultYNeg.Value, "Y-");
+                CalibrationProgress = (int)(currentStep * 60.0 / totalSteps); // 60% for sampling
             }
-            currentStep++;
-            CalibrationProgress = (int)(currentStep * 100.0 / totalSteps);
+
+            // 合併正負方向的採樣
+            var allSamplesX = samplesXPos.Concat(samplesXNeg).ToList();
+            var allSamplesY = samplesYPos.Concat(samplesYNeg).ToList();
+            
+            if (allSamplesX.Count > 0)
+                rawPointsX.Add((delta, allSamplesX));
+            if (allSamplesY.Count > 0)
+                rawPointsY.Add((delta, allSamplesY));
         }
 
-        // Save calibration data
+        // Phase 2: 異常值過濾和數據處理
+        CalibrationStatus = "階段 2/3：分析和過濾數據...";
+        CalibrationProgress = 70;
+        
+        var pointsX = ProcessCalibrationSamples(rawPointsX);
+        var pointsY = ProcessCalibrationSamples(rawPointsY);
+
+        // 顯示處理後的校準點
+        CalibrationPoints.Clear();
+        foreach (var point in pointsX)
+            AddCalibrationPointDisplay(point.HidDelta, point.ActualPixelDelta, "X");
+        foreach (var point in pointsY)
+            AddCalibrationPointDisplay(point.HidDelta, point.ActualPixelDelta, "Y");
+
+        // Phase 3: 擬合非線性模型
+        CalibrationStatus = "階段 3/3：擬合非線性模型...";
+        CalibrationProgress = 85;
+
         var calibrationData = new MouseCalibrationData
         {
             CalibratedAt = DateTime.Now,
             PointsX = pointsX,
             PointsY = pointsY
         };
+
+        // 執行多項式擬合
+        calibrationData.FitPolynomial(degree: 2);
 
         var settings = await _settingsService.LoadAsync();
         settings.MouseCalibration = calibrationData;
@@ -829,7 +883,9 @@ public partial class DebugViewModel : ObservableObject
         CalibrationStatus = calibrationData.GetSummary();
         CalibrationFormula = GenerateFormulaDisplay(calibrationData);
         CalibrationProgress = 100;
-        StatusMessage = "校準完成！";
+        
+        string accelerationInfo = calibrationData.HasMouseAcceleration ? "（檢測到滑鼠加速）" : "（線性模式）";
+        StatusMessage = $"校準完成！{accelerationInfo}";
 
         // Update manual ratio inputs with calibrated values
         var avgRatioX = pointsX.Count > 0
@@ -844,8 +900,63 @@ public partial class DebugViewModel : ObservableObject
         await _loggingService.LogInfoAsync("Mouse calibration completed", new Dictionary<string, object>
         {
             { "PointsX", pointsX.Count },
-            { "PointsY", pointsY.Count }
+            { "PointsY", pointsY.Count },
+            { "HasAcceleration", calibrationData.HasMouseAcceleration },
+            { "PolynomialDegree", 2 }
         });
+    }
+
+    /// <summary>
+    /// 處理採樣數據：取中位數並過濾異常值
+    /// </summary>
+    private List<CalibrationPoint> ProcessCalibrationSamples(List<(int delta, List<double> samples)> rawPoints)
+    {
+        var result = new List<CalibrationPoint>();
+
+        foreach (var (delta, samples) in rawPoints)
+        {
+            if (samples.Count == 0) continue;
+
+            // 過濾明顯的異常值（超出 IQR 1.5 倍）
+            var filteredSamples = FilterOutliers(samples);
+            
+            if (filteredSamples.Count == 0) continue;
+
+            // 取中位數作為最終值
+            var sortedSamples = filteredSamples.OrderBy(x => x).ToList();
+            double median = sortedSamples.Count % 2 == 0
+                ? (sortedSamples[sortedSamples.Count / 2 - 1] + sortedSamples[sortedSamples.Count / 2]) / 2.0
+                : sortedSamples[sortedSamples.Count / 2];
+
+            result.Add(new CalibrationPoint
+            {
+                HidDelta = delta,
+                ActualPixelDelta = median
+            });
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// 使用 IQR 方法過濾異常值
+    /// </summary>
+    private List<double> FilterOutliers(List<double> values)
+    {
+        if (values.Count < 3) return values;
+
+        var sorted = values.OrderBy(x => x).ToList();
+        int q1Index = sorted.Count / 4;
+        int q3Index = 3 * sorted.Count / 4;
+        
+        double q1 = sorted[q1Index];
+        double q3 = sorted[q3Index];
+        double iqr = q3 - q1;
+        
+        double lowerBound = q1 - 1.5 * iqr;
+        double upperBound = q3 + 1.5 * iqr;
+
+        return values.Where(v => v >= lowerBound && v <= upperBound).ToList();
     }
 
     private async Task<double?> TestSingleCalibrationPointAsync(int deltaX, int deltaY, int resetX, int resetY, CancellationToken cancellationToken)
