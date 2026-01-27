@@ -24,6 +24,7 @@ internal static class Win32Structures
     public const uint MOUSEEVENTF_XUP = 0x0100;
     public const uint MOUSEEVENTF_WHEEL = 0x0800;
     public const uint MOUSEEVENTF_HWHEEL = 0x1000;
+    public const uint MOUSEEVENTF_VIRTUALDESK = 0x4000;  // Maps to entire virtual desktop (multi-monitor)
     public const uint MOUSEEVENTF_ABSOLUTE = 0x8000;
 
     // X button identifiers

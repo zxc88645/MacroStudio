@@ -63,8 +63,12 @@ internal static class Win32Api
     public static extern int GetSystemMetrics(int nIndex);
 
     // System metrics constants
-    public const int SM_CXSCREEN = 0;  // Width of the screen
-    public const int SM_CYSCREEN = 1;  // Height of the screen
+    public const int SM_CXSCREEN = 0;   // Width of the primary screen
+    public const int SM_CYSCREEN = 1;   // Height of the primary screen
+    public const int SM_XVIRTUALSCREEN = 76;   // Left of virtual desktop
+    public const int SM_YVIRTUALSCREEN = 77;   // Top of virtual desktop
+    public const int SM_CXVIRTUALSCREEN = 78;  // Width of virtual desktop (all monitors)
+    public const int SM_CYVIRTUALSCREEN = 79;  // Height of virtual desktop (all monitors)
 
     /// <summary>
     /// Rectangle structure for window bounds.

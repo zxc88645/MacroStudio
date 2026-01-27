@@ -451,18 +451,24 @@ public class Win32InputSimulator : IInputSimulator
 
     private INPUT CreateAbsoluteMouseMoveInput(Point position)
     {
-        var screenWidth = GetSystemMetrics(SM_CXSCREEN);
-        var screenHeight = GetSystemMetrics(SM_CYSCREEN);
+        // Use virtual desktop coordinates for multi-monitor support
+        var virtualLeft = GetSystemMetrics(SM_XVIRTUALSCREEN);
+        var virtualTop = GetSystemMetrics(SM_YVIRTUALSCREEN);
+        var virtualWidth = GetSystemMetrics(SM_CXVIRTUALSCREEN);
+        var virtualHeight = GetSystemMetrics(SM_CYVIRTUALSCREEN);
 
-        // Normalize to 0..65535. Use (size-1) per Win32 docs to map full range.
-        var maxX = Math.Max(1, screenWidth - 1);
-        var maxY = Math.Max(1, screenHeight - 1);
+        // Convert screen coordinates to virtual desktop relative coordinates
+        var relativeX = position.X - virtualLeft;
+        var relativeY = position.Y - virtualTop;
 
-        var x = Math.Clamp(position.X, 0, maxX);
-        var y = Math.Clamp(position.Y, 0, maxY);
+        // Normalize to 0..65535 range across the entire virtual desktop
+        // Use (size) not (size-1) per Microsoft docs for MOUSEEVENTF_VIRTUALDESK
+        var dx = (int)Math.Round(relativeX * 65535.0 / virtualWidth, MidpointRounding.AwayFromZero);
+        var dy = (int)Math.Round(relativeY * 65535.0 / virtualHeight, MidpointRounding.AwayFromZero);
 
-        var dx = (int)Math.Round(x * 65535.0 / maxX, MidpointRounding.AwayFromZero);
-        var dy = (int)Math.Round(y * 65535.0 / maxY, MidpointRounding.AwayFromZero);
+        // Clamp to valid range
+        dx = Math.Clamp(dx, 0, 65535);
+        dy = Math.Clamp(dy, 0, 65535);
 
         return new INPUT
         {
@@ -474,7 +480,8 @@ public class Win32InputSimulator : IInputSimulator
                     dx = dx,
                     dy = dy,
                     mouseData = 0,
-                    dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE,
+                    // MOUSEEVENTF_VIRTUALDESK is required for multi-monitor support
+                    dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_VIRTUALDESK,
                     time = 0,
                     dwExtraInfo = IntPtr.Zero
                 }
