@@ -8,6 +8,7 @@ public sealed class JsonSettingsService : ISettingsService
 {
     private readonly ILogger<JsonSettingsService> _logger;
     private readonly string _settingsPath;
+    private readonly SemaphoreSlim _fileLock = new(1, 1);
     private readonly JsonSerializerOptions _options = new(JsonSerializerDefaults.Web)
     {
         WriteIndented = true
@@ -26,6 +27,7 @@ public sealed class JsonSettingsService : ISettingsService
 
     public async Task<AppSettings> LoadAsync()
     {
+        await _fileLock.WaitAsync();
         try
         {
             if (!File.Exists(_settingsPath))
@@ -41,14 +43,26 @@ public sealed class JsonSettingsService : ISettingsService
             _logger.LogError(ex, "Failed to load settings; using defaults");
             return AppSettings.Default();
         }
+        finally
+        {
+            _fileLock.Release();
+        }
     }
 
     public async Task SaveAsync(AppSettings settings)
     {
         if (settings == null) throw new ArgumentNullException(nameof(settings));
 
-        var json = JsonSerializer.Serialize(settings, _options);
-        await File.WriteAllTextAsync(_settingsPath, json);
+        await _fileLock.WaitAsync();
+        try
+        {
+            var json = JsonSerializer.Serialize(settings, _options);
+            await File.WriteAllTextAsync(_settingsPath, json);
+        }
+        finally
+        {
+            _fileLock.Release();
+        }
     }
 }
 
