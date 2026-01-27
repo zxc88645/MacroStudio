@@ -25,6 +25,7 @@ public partial class RecordingViewModel : ObservableObject
     private readonly ScriptListViewModel _scriptListViewModel;
     private readonly CommandGridViewModel _commandGridViewModel;
     private readonly ArduinoConnectionService _arduinoConnectionService;
+    private readonly ISettingsService _settingsService;
 
     public ObservableCollection<Command> RecordedCommands { get; } = new();
 
@@ -33,9 +34,6 @@ public partial class RecordingViewModel : ObservableObject
 
     [ObservableProperty]
     private bool recordMouseMovements = true;
-
-    [ObservableProperty]
-    private bool useLowLevelMouseMove = true;
 
     [ObservableProperty]
     private bool useRelativeMouseMove = false;
@@ -53,7 +51,7 @@ public partial class RecordingViewModel : ObservableObject
     private int totalCommands;
 
     [ObservableProperty]
-    private InputMode inputMode = InputMode.Software;
+    private InputMode inputMode = InputMode.HighLevel;
 
     [ObservableProperty]
     private ArduinoConnectionState arduinoConnectionState = ArduinoConnectionState.Disconnected;
@@ -70,7 +68,8 @@ public partial class RecordingViewModel : ObservableObject
         ILoggingService loggingService,
         ScriptListViewModel scriptListViewModel,
         CommandGridViewModel commandGridViewModel,
-        ArduinoConnectionService arduinoConnectionService)
+        ArduinoConnectionService arduinoConnectionService,
+        ISettingsService settingsService)
     {
         _recordingService = recordingService ?? throw new ArgumentNullException(nameof(recordingService));
         _scriptManager = scriptManager ?? throw new ArgumentNullException(nameof(scriptManager));
@@ -78,6 +77,7 @@ public partial class RecordingViewModel : ObservableObject
         _scriptListViewModel = scriptListViewModel ?? throw new ArgumentNullException(nameof(scriptListViewModel));
         _commandGridViewModel = commandGridViewModel ?? throw new ArgumentNullException(nameof(commandGridViewModel));
         _arduinoConnectionService = arduinoConnectionService ?? throw new ArgumentNullException(nameof(arduinoConnectionService));
+        _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
 
         _recordingService.CommandRecorded += OnCommandRecorded;
         _recordingService.RecordingStateChanged += OnRecordingStateChanged;
@@ -87,6 +87,25 @@ public partial class RecordingViewModel : ObservableObject
 
         UpdateStatusFromService();
         RefreshSerialPorts();
+        
+        // Load global input mode from settings
+        _ = LoadGlobalInputModeAsync();
+    }
+
+    private async Task LoadGlobalInputModeAsync()
+    {
+        try
+        {
+            var settings = await _settingsService.LoadAsync();
+            System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+            {
+                InputMode = settings.GlobalInputMode;
+            });
+        }
+        catch (Exception ex)
+        {
+            await _loggingService.LogErrorAsync("Failed to load global input mode", ex);
+        }
     }
 
     public bool IsRecording => _recordingService.IsRecording;
@@ -169,15 +188,18 @@ public partial class RecordingViewModel : ObservableObject
             TotalCommands = 0;
             InsertRecordedIntoEditorCommand.NotifyCanExecuteChanged();
 
+            // Get global input mode from settings
+            var settings = await _settingsService.LoadAsync();
+            var globalInputMode = settings.GlobalInputMode;
+            
             var options = new RecordingOptions
             {
                 RecordMouseMovements = RecordMouseMovements,
                 RecordMouseClicks = RecordMouseClicks,
                 RecordKeyboardInput = RecordKeyboardInput,
                 FilterSystemEvents = FilterSystemEvents,
-                UseLowLevelMouseMove = UseLowLevelMouseMove,
                 UseRelativeMouseMove = UseRelativeMouseMove,
-                InputMode = InputMode
+                InputMode = globalInputMode
             };
 
             await _recordingService.StartRecordingAsync(options);

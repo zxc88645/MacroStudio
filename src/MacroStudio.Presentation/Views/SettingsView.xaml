@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:val="clr-namespace:MacroStudio.Domain.ValueObjects;assembly=MacroStudio.Domain"
              mc:Ignorable="d"
              d:DesignHeight="600" d:DesignWidth="1200">
 
@@ -37,6 +38,26 @@
                                   Background="{DynamicResource Bg1}"
                                   BorderBrush="{DynamicResource BorderBrushSoft}"/>
                         <TextBlock Grid.Column="2" Margin="12,2,0,0" Foreground="{DynamicResource TextMutedBrush}" Text="{DynamicResource Ui.Settings.LanguageHint}" TextWrapping="Wrap"/>
+                    </Grid>
+                </Border>
+
+                <!-- Global Input Mode -->
+                <Border DockPanel.Dock="Top" Background="{DynamicResource Bg1}" CornerRadius="10" Padding="12" Margin="0,0,0,14" BorderBrush="{DynamicResource BorderBrushSoft}" BorderThickness="1">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="260"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" VerticalAlignment="Center" Text="鍵鼠模式"/>
+                        <ComboBox Grid.Column="1"
+                                  SelectedItem="{Binding GlobalInputMode}"
+                                  ItemsSource="{Binding AvailableInputModes}"
+                                  Foreground="{DynamicResource TextBrush}"
+                                  Background="{DynamicResource Bg1}"
+                                  BorderBrush="{DynamicResource BorderBrushSoft}">
+                        </ComboBox>
+                        <TextBlock Grid.Column="2" Margin="12,2,0,0" Foreground="{DynamicResource TextMutedBrush}" Text="選擇全域鍵鼠模式：高階（SetCursorPos）、低階（SendInput）、硬件（Arduino）" TextWrapping="Wrap"/>
                     </Grid>
                 </Border>
 

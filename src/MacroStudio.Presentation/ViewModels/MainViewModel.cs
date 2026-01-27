@@ -27,6 +27,7 @@ public partial class MainViewModel : ObservableObject
     public RecordingViewModel Recording { get; }
     public LoggingViewModel Logging { get; }
     public SettingsViewModel Settings { get; }
+    public DebugViewModel Debug { get; }
 
     [ObservableProperty]
     private Script? selectedScript;
@@ -52,7 +53,8 @@ public partial class MainViewModel : ObservableObject
         ExecutionControlViewModel executionControlViewModel,
         RecordingViewModel recordingViewModel,
         LoggingViewModel loggingViewModel,
-        SettingsViewModel settingsViewModel)
+        SettingsViewModel settingsViewModel,
+        DebugViewModel debugViewModel)
     {
         _scriptManager = scriptManager ?? throw new ArgumentNullException(nameof(scriptManager));
         _recordingService = recordingService ?? throw new ArgumentNullException(nameof(recordingService));
@@ -68,6 +70,7 @@ public partial class MainViewModel : ObservableObject
         Recording = recordingViewModel ?? throw new ArgumentNullException(nameof(recordingViewModel));
         Logging = loggingViewModel ?? throw new ArgumentNullException(nameof(loggingViewModel));
         Settings = settingsViewModel ?? throw new ArgumentNullException(nameof(settingsViewModel));
+        Debug = debugViewModel ?? throw new ArgumentNullException(nameof(debugViewModel));
 
         ScriptList.SelectedScriptChanged += (_, script) =>
         {

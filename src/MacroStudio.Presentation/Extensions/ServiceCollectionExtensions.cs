@@ -49,6 +49,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<RecordingViewModel>();
         services.AddSingleton<LoggingViewModel>();
         services.AddSingleton<SettingsViewModel>();
+        services.AddSingleton<DebugViewModel>();
 
         // UI coordinators
         services.AddHostedService<SafetyUiCoordinator>();
@@ -96,6 +97,9 @@ public static class ServiceCollectionExtensions
     private static IServiceCollection AddInfrastructureServices(this IServiceCollection services)
     {
         // Register input simulation services
+        // Register IInputSimulator interface with Win32InputSimulator as default implementation
+        // (for ViewModels that need basic input simulation, like CommandGridViewModel)
+        services.AddScoped<IInputSimulator, Win32InputSimulator>();
         services.AddScoped<Win32InputSimulator>();
         services.AddScoped<ArduinoInputSimulator>();
         services.AddScoped<CoordinateTransformer>();

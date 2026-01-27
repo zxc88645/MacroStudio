@@ -49,7 +49,7 @@ public partial class ExecutionControlViewModel : ObservableObject
     private string? lastError;
 
     [ObservableProperty]
-    private InputMode inputMode = InputMode.Software;
+    private InputMode inputMode = InputMode.HighLevel;
 
     [ObservableProperty]
     private ArduinoConnectionState arduinoConnectionState = ArduinoConnectionState.Disconnected;
@@ -120,6 +120,7 @@ public partial class ExecutionControlViewModel : ObservableObject
         var settings = await _settingsService.LoadAsync();
         ShowCountdown = settings.ShowCountdown;
         CountdownSeconds = settings.CountdownSeconds <= 0 ? 3 : settings.CountdownSeconds;
+        InputMode = settings.GlobalInputMode;
     }
 
     partial void OnCountdownSecondsChanged(double oldValue, double newValue)
@@ -163,12 +164,16 @@ public partial class ExecutionControlViewModel : ObservableObject
             LastError = null;
         });
 
+        // Get global input mode from settings
+        var settings = await _settingsService.LoadAsync();
+        var globalInputMode = settings.GlobalInputMode;
+        
         var options = ExecutionOptions.Default();
         options.TriggerSource = ExecutionTriggerSource.DebugPanel;
         options.ControlMode = ExecutionControlMode.DebugInteractive;
         options.ShowCountdown = false; // UI handles countdown (focus warning)
         options.CountdownDuration = TimeSpan.Zero;
-        options.InputMode = InputMode;
+        options.InputMode = globalInputMode;
 
         if (ShowCountdown && CountdownDuration > TimeSpan.Zero)
         {

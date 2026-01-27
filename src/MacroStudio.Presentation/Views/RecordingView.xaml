@@ -9,12 +9,20 @@
     <UserControl.Resources>
         <conv:CommandDisplayConverter x:Key="CommandDisplayConverter" />
         <conv:ResourceFormatConverter x:Key="ResourceFormatConverter" />
+        <conv:ArduinoConnectionStateBrushConverter x:Key="ArduinoConnectionStateBrushConverter" />
     </UserControl.Resources>
     <!-- Keep this panel from growing unbounded (it lives in an Auto row in MainWindow). -->
     <Border Style="{DynamicResource CardBorder}" Padding="14" MaxHeight="340">
         <DockPanel LastChildFill="True">
             <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
-                <TextBlock FontWeight="SemiBold" Text="{DynamicResource Ui.Recording.Title}" />
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock FontWeight="SemiBold" Text="{DynamicResource Ui.Recording.Title}" />
+                    <!-- Arduino 連接狀態燈 -->
+                    <Ellipse Width="10" Height="10" Margin="8,0,0,0"
+                             VerticalAlignment="Center"
+                             ToolTip="{Binding Recording.ArduinoConnectionState, StringFormat='Arduino: {0}'}"
+                             Fill="{Binding Recording.ArduinoConnectionState, Converter={StaticResource ArduinoConnectionStateBrushConverter}}" />
+                </StackPanel>
                 <TextBlock DockPanel.Dock="Right"
                            Foreground="{DynamicResource TextMutedBrush}"
                            Text="{Binding Recording.RecordingStatusText}" />
@@ -34,7 +42,6 @@
                 <GroupBox Header="{DynamicResource Ui.Recording.Options}" Padding="10" BorderBrush="{DynamicResource BorderBrushSoft}" Foreground="{DynamicResource TextMutedBrush}">
                     <StackPanel>
                         <CheckBox Content="{DynamicResource Ui.Recording.RecordMouseMovements}" IsChecked="{Binding Recording.RecordMouseMovements}" />
-                        <CheckBox Content="{DynamicResource Ui.Recording.UseLowLevelMouseMove}" IsChecked="{Binding Recording.UseLowLevelMouseMove}" />
                         <CheckBox Content="{DynamicResource Ui.Recording.UseRelativeMouseMove}" IsChecked="{Binding Recording.UseRelativeMouseMove}" />
                         <CheckBox Content="{DynamicResource Ui.Recording.RecordMouseClicks}" IsChecked="{Binding Recording.RecordMouseClicks}" />
                         <CheckBox Content="{DynamicResource Ui.Recording.RecordKeyboardInput}" IsChecked="{Binding Recording.RecordKeyboardInput}" />

@@ -14,6 +14,7 @@ public partial class SettingsViewModel : ObservableObject
     private readonly IRecordingHotkeyHookService _recordingHotkeyHookService;
     private readonly ILoggingService _logging;
     private readonly LocalizationService _localization;
+    private readonly Application.Services.ArduinoConnectionService _arduinoConnectionService;
 
     private AppSettings? _settings;
 
@@ -23,6 +24,13 @@ public partial class SettingsViewModel : ObservableObject
     {
         new UiLanguageOption("zh-TW", "繁體中文"),
         new UiLanguageOption("en-US", "English"),
+    };
+
+    public ObservableCollection<InputMode> AvailableInputModes { get; } = new()
+    {
+        InputMode.HighLevel,
+        InputMode.LowLevel,
+        InputMode.Hardware
     };
 
     [ObservableProperty]
@@ -40,16 +48,21 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private string? lastMessage;
 
+    [ObservableProperty]
+    private InputMode globalInputMode = InputMode.HighLevel;
+
     public SettingsViewModel(
         ISettingsService settingsService,
         IRecordingHotkeyHookService recordingHotkeyHookService,
         ILoggingService logging,
-        LocalizationService localization)
+        LocalizationService localization,
+        Application.Services.ArduinoConnectionService arduinoConnectionService)
     {
         _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
         _recordingHotkeyHookService = recordingHotkeyHookService ?? throw new ArgumentNullException(nameof(recordingHotkeyHookService));
         _logging = logging ?? throw new ArgumentNullException(nameof(logging));
         _localization = localization ?? throw new ArgumentNullException(nameof(localization));
+        _arduinoConnectionService = arduinoConnectionService ?? throw new ArgumentNullException(nameof(arduinoConnectionService));
 
         // Fire-and-forget initialization (load persisted settings and register hotkeys).
         _ = InitializeAsync();
@@ -74,9 +87,16 @@ public partial class SettingsViewModel : ObservableObject
             RecordingStartHotkey = _settings.RecordingStartHotkey;
             RecordingPauseHotkey = _settings.RecordingPauseHotkey;
             RecordingStopHotkey = _settings.RecordingStopHotkey;
+            GlobalInputMode = _settings.GlobalInputMode;
 
             ApplyToHookService();
             LastMessage = "設定已載入";
+
+            // Auto-connect to Arduino if hardware mode is enabled at startup
+            if (_settings.GlobalInputMode == InputMode.Hardware)
+            {
+                await TryAutoConnectArduinoAsync("應用啟動時");
+            }
         }
         catch (Exception ex)
         {
@@ -296,6 +316,97 @@ public partial class SettingsViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(RecordingStopHotkeyDisplay));
         ApplyToHookService();
+    }
+
+    partial void OnGlobalInputModeChanged(InputMode oldValue, InputMode newValue)
+    {
+        // Fire-and-forget to persist the change and auto-connect if switching to Hardware mode
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                _settings ??= AppSettings.Default();
+                _settings.EnsureDefaults();
+                _settings.GlobalInputMode = newValue;
+                await _settingsService.SaveAsync(_settings);
+                
+                System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                {
+                    LastMessage = $"鍵鼠模式已切換為: {GetInputModeDisplayName(newValue)}";
+                });
+
+                // Auto-connect to Arduino when switching to Hardware mode
+                if (newValue == InputMode.Hardware)
+                {
+                    await TryAutoConnectArduinoAsync("切換到硬件模式時");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                {
+                    LastMessage = $"鍵鼠模式更新失敗：{ex.Message}";
+                });
+                try { await _logging.LogErrorAsync("Failed to update global input mode", ex); } catch { }
+            }
+        });
+    }
+
+    /// <summary>
+    /// Attempts to auto-connect to Arduino device.
+    /// </summary>
+    private async Task TryAutoConnectArduinoAsync(string context)
+    {
+        try
+        {
+            // Skip if already connected
+            if (_arduinoConnectionService.IsConnected)
+            {
+                System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                {
+                    LastMessage = $"Arduino 已連接 ({_arduinoConnectionService.ConnectedPortName})";
+                });
+                return;
+            }
+
+            System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+            {
+                LastMessage = $"{context}：正在自動連接 Arduino...";
+            });
+
+            var success = await _arduinoConnectionService.AutoConnectAsync();
+
+            System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+            {
+                if (success)
+                {
+                    LastMessage = $"Arduino 自動連接成功 ({_arduinoConnectionService.ConnectedPortName})";
+                }
+                else
+                {
+                    LastMessage = $"{context}：未找到可用的 Arduino 設備";
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+            {
+                LastMessage = $"Arduino 自動連接失敗：{ex.Message}";
+            });
+            try { await _logging.LogErrorAsync($"Failed to auto-connect Arduino ({context})", ex); } catch { }
+        }
+    }
+
+    private static string GetInputModeDisplayName(InputMode mode)
+    {
+        return mode switch
+        {
+            InputMode.HighLevel => "高階鍵鼠",
+            InputMode.LowLevel => "低階鍵鼠",
+            InputMode.Hardware => "硬件鍵鼠",
+            _ => mode.ToString()
+        };
     }
 }
 

@@ -1,4 +1,4 @@
-﻿<Window x:Class="MacroStudio.Presentation.MainWindow"
+<Window x:Class="MacroStudio.Presentation.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -7,6 +7,7 @@
         xmlns:vm="clr-namespace:MacroStudio.Presentation.ViewModels"
         xmlns:views="clr-namespace:MacroStudio.Presentation.Views"
         xmlns:conv="clr-namespace:MacroStudio.Presentation.Converters"
+        xmlns:val="clr-namespace:MacroStudio.Domain.ValueObjects;assembly=MacroStudio.Domain"
         mc:Ignorable="d"
         Title="{DynamicResource Ui.App.Title}" Height="1200" Width="1600"
         WindowStartupLocation="CenterScreen"
@@ -15,6 +16,7 @@
         <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
             <views:SettingsView/>
         </DataTemplate>
+        <conv:ArduinoConnectionStateBrushConverter x:Key="ArduinoConnectionStateBrushConverter" />
     </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
@@ -29,6 +31,13 @@
                 <StackPanel Orientation="Horizontal">
                     <TextBlock FontSize="18" FontWeight="SemiBold" Text="{DynamicResource Ui.Topbar.Title}" />
                     <TextBlock Margin="10,3,0,0" Foreground="{DynamicResource TextMutedBrush}" Text="{DynamicResource Ui.Topbar.Subtitle}" />
+                    <!-- Arduino 連接狀態燈 -->
+                    <StackPanel Orientation="Horizontal" Margin="20,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="Arduino:" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="{DynamicResource TextMutedBrush}" FontSize="12" />
+                        <Ellipse Width="10" Height="10"
+                                 ToolTip="{Binding Recording.ArduinoConnectionState, StringFormat='Arduino 連接狀態: {0}'}"
+                                 Fill="{Binding Recording.ArduinoConnectionState, Converter={StaticResource ArduinoConnectionStateBrushConverter}}" />
+                    </StackPanel>
                 </StackPanel>
                 <Button DockPanel.Dock="Right"
                         Margin="12,0,0,0"
@@ -112,6 +121,10 @@
 
             <TabItem Header="{DynamicResource Ui.Tab.Settings}">
                 <ContentPresenter Content="{Binding Settings}"/>
+            </TabItem>
+
+            <TabItem Header="偵錯">
+                <views:DebugView DataContext="{Binding Debug}"/>
             </TabItem>
         </TabControl>
 
